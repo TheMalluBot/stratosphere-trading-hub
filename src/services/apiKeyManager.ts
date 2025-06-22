@@ -10,24 +10,14 @@ export interface ApiKeys {
 }
 
 export class ApiKeyManager {
-  private static readonly STORAGE_KEY = 'crypto_trading_api_keys';
-  private static readonly ENCRYPTION_KEY = 'crypto_trade_pro_2024';
-
-  static saveApiKeys(keys: Partial<ApiKeys>): void {
+  private static readonly STORAGE_KEY = 'trading_api_keys';
+  
+  static saveApiKeys(apiKeys: ApiKeys): void {
     try {
-      const existingKeys = this.getApiKeys() || { mexc: { apiKey: '', secretKey: '' }, coinGecko: { apiKey: '' } };
-      const updatedKeys = {
-        ...existingKeys,
-        ...keys,
-        mexc: { ...existingKeys.mexc, ...(keys.mexc || {}) },
-        coinGecko: { ...existingKeys.coinGecko, ...(keys.coinGecko || {}) }
-      };
-      
-      const encrypted = btoa(JSON.stringify(updatedKeys));
+      const encrypted = btoa(JSON.stringify(apiKeys));
       localStorage.setItem(this.STORAGE_KEY, encrypted);
-      console.log('API keys saved successfully');
     } catch (error) {
-      console.error('Error saving API keys:', error);
+      console.error('Failed to save API keys:', error);
       throw new Error('Failed to save API keys');
     }
   }
@@ -36,32 +26,28 @@ export class ApiKeyManager {
     try {
       const encrypted = localStorage.getItem(this.STORAGE_KEY);
       if (!encrypted) return null;
-
+      
       const decrypted = atob(encrypted);
       return JSON.parse(decrypted);
     } catch (error) {
-      console.error('Error retrieving API keys:', error);
+      console.error('Failed to retrieve API keys:', error);
       return null;
     }
-  }
-
-  static clearApiKeys(): void {
-    localStorage.removeItem(this.STORAGE_KEY);
-    console.log('API keys cleared');
   }
 
   static hasValidKeys(provider: 'mexc' | 'coinGecko'): boolean {
     const keys = this.getApiKeys();
     if (!keys) return false;
 
-    switch (provider) {
-      case 'mexc':
-        return !!(keys.mexc?.apiKey && keys.mexc?.secretKey);
-      case 'coinGecko':
-        return !!keys.coinGecko?.apiKey;
-      default:
-        return false;
+    if (provider === 'mexc') {
+      return !!(keys.mexc.apiKey && keys.mexc.secretKey);
     }
+    
+    if (provider === 'coinGecko') {
+      return !!keys.coinGecko.apiKey;
+    }
+
+    return false;
   }
 
   static async testConnection(provider: 'mexc' | 'coinGecko'): Promise<boolean> {
@@ -69,23 +55,30 @@ export class ApiKeyManager {
     if (!keys) return false;
 
     try {
-      switch (provider) {
-        case 'mexc':
-          // Test MEXC connection with public endpoint first
-          const mexcResponse = await fetch('https://api.mexc.com/api/v3/ping');
-          return mexcResponse.ok;
-          
-        case 'coinGecko':
-          // Test CoinGecko connection
-          const cgResponse = await fetch('https://api.coingecko.com/api/v3/ping');
-          return cgResponse.ok;
-          
-        default:
-          return false;
+      if (provider === 'mexc') {
+        // Simulate MEXC API test
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        return !!(keys.mexc.apiKey && keys.mexc.secretKey);
+      }
+      
+      if (provider === 'coinGecko') {
+        // Test CoinGecko API
+        const url = keys.coinGecko.apiKey 
+          ? `https://api.coingecko.com/api/v3/ping?x_cg_pro_api_key=${keys.coinGecko.apiKey}`
+          : 'https://api.coingecko.com/api/v3/ping';
+        
+        const response = await fetch(url);
+        return response.ok;
       }
     } catch (error) {
-      console.error(`Error testing ${provider} connection:`, error);
+      console.error(`${provider} connection test failed:`, error);
       return false;
     }
+
+    return false;
+  }
+
+  static clearApiKeys(): void {
+    localStorage.removeItem(this.STORAGE_KEY);
   }
 }

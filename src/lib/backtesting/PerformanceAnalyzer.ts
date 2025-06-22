@@ -1,21 +1,4 @@
-
-import { StrategyResult, MarketData } from '@/types/strategy';
-
-export interface EnhancedPerformance {
-  calmarRatio: number;
-  sortinoRatio: number;
-  informationRatio: number;
-  maxAdverseExcursion: number;
-  maxFavorableExcursion: number;
-  profitFactor: number;
-  recoveryFactor: number;
-  ulcerIndex: number;
-  expectedReturn: number;
-  standardDeviation: number;
-  downside_deviation: number;
-  var95: number; // Value at Risk 95%
-  cvar95: number; // Conditional Value at Risk 95%
-}
+import { StrategyResult, MarketData, EnhancedPerformance } from '@/types/strategy';
 
 export class PerformanceAnalyzer {
   async enhanceResults(

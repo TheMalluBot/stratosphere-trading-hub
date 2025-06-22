@@ -16,6 +16,22 @@ export interface StrategySignal {
   metadata?: Record<string, any>;
 }
 
+export interface EnhancedPerformance {
+  calmarRatio?: number;
+  sortinoRatio?: number;
+  informationRatio?: number;
+  maxAdverseExcursion?: number;
+  maxFavorableExcursion?: number;
+  profitFactor?: number;
+  recoveryFactor?: number;
+  ulcerIndex?: number;
+  expectedReturn?: number;
+  standardDeviation?: number;
+  downside_deviation?: number;
+  var95?: number; // Value at Risk 95%
+  cvar95?: number; // Conditional Value at Risk 95%
+}
+
 export interface StrategyResult {
   signals: StrategySignal[];
   indicators: Record<string, number[]>;
@@ -25,7 +41,7 @@ export interface StrategyResult {
     sharpeRatio: number;
     maxDrawdown: number;
     totalTrades: number;
-  };
+  } & EnhancedPerformance;
 }
 
 export interface MarketData {

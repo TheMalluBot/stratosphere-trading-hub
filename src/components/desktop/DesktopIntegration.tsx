@@ -4,22 +4,14 @@ import { useDesktopIntegration } from '@/hooks/useDesktopIntegration';
 import { optimizationManager } from '@/lib/performance/OptimizationManager';
 
 export function DesktopIntegration() {
-  const { isElectron, showNotification } = useDesktopIntegration();
+  const { showNotification } = useDesktopIntegration();
 
   useEffect(() => {
-    if (isElectron) {
-      console.log('🖥️ Running in Electron desktop mode');
-      showNotification(
-        'AlgoTrade Pro', 
-        'Desktop application started successfully!'
-      );
-    } else {
-      console.log('🌐 Running in web browser mode');
-      showNotification(
-        'AlgoTrade Pro', 
-        'Web application loaded successfully!'
-      );
-    }
+    console.log('🌐 AlgoTrade Pro - Web Application Mode');
+    showNotification(
+      'AlgoTrade Pro', 
+      'Trading platform loaded successfully!'
+    );
     
     // Initialize performance optimizations for web
     optimizationManager.optimizeRendering();
@@ -30,10 +22,13 @@ export function DesktopIntegration() {
       optimizationManager.enableGPUAcceleration(appElement);
     }
 
+    // Web Workers for background processing
+    optimizationManager.initializeWebWorkers();
+
     return () => {
       optimizationManager.cleanup();
     };
-  }, [isElectron, showNotification]);
+  }, [showNotification]);
 
   // This component doesn't render anything - it's just for initialization
   return null;

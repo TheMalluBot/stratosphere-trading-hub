@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "next-themes";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { TradingLayout } from "@/components/layout/TradingLayout";
+import { DesktopIntegration } from "@/components/desktop/DesktopIntegration";
 
 // Import pages
 import Dashboard from "@/pages/Dashboard";
@@ -34,6 +35,7 @@ function App() {
         <Router>
           <SidebarProvider>
             <div className="flex h-screen bg-background">
+              <DesktopIntegration />
               <Routes>
                 <Route path="/" element={<TradingLayout />}>
                   <Route index element={<Index />} />

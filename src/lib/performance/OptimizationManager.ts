@@ -3,6 +3,7 @@ export class OptimizationManager {
   private animationFrame: number | null = null;
   private isVisible = true;
   private performanceObserver: PerformanceObserver | null = null;
+  private workers: Worker[] = [];
 
   constructor() {
     this.setupVisibilityAPI();
@@ -10,7 +11,6 @@ export class OptimizationManager {
   }
 
   private setupVisibilityAPI() {
-    // Optimize performance when app is not visible
     document.addEventListener('visibilitychange', () => {
       this.isVisible = !document.hidden;
       
@@ -37,6 +37,40 @@ export class OptimizationManager {
     }
   }
 
+  initializeWebWorkers() {
+    // Initialize web workers for background computation
+    const maxWorkers = navigator.hardwareConcurrency || 4;
+    console.log(`🔧 Initializing ${maxWorkers} web workers for maximum performance`);
+    
+    // We'll create workers as needed for trading calculations
+    for (let i = 0; i < Math.min(maxWorkers, 4); i++) {
+      try {
+        // Create a simple worker for background tasks
+        const workerCode = `
+          self.onmessage = function(e) {
+            // Background computation tasks
+            const { type, data } = e.data;
+            
+            switch(type) {
+              case 'calculate':
+                // Perform calculations
+                self.postMessage({ result: data * 2 });
+                break;
+              default:
+                self.postMessage({ error: 'Unknown task type' });
+            }
+          }
+        `;
+        
+        const blob = new Blob([workerCode], { type: 'application/javascript' });
+        const worker = new Worker(URL.createObjectURL(blob));
+        this.workers.push(worker);
+      } catch (error) {
+        console.warn('Web worker creation failed:', error);
+      }
+    }
+  }
+
   startMeasure(name: string) {
     if ('performance' in window && 'mark' in performance) {
       performance.mark(`${name}-start`);
@@ -51,30 +85,27 @@ export class OptimizationManager {
   }
 
   optimizeScrolling(element: HTMLElement) {
-    // Add smooth scrolling optimization
     element.style.scrollBehavior = 'smooth';
     element.style.overflowAnchor = 'auto';
     
-    // Use passive event listeners for better performance
     element.addEventListener('scroll', this.throttle(() => {
-      // Handle scroll events
+      // Handle scroll events efficiently
     }, 16), { passive: true });
   }
 
   optimizeRendering() {
-    // Request animation frame for smooth rendering
+    if (!this.isVisible) return;
+
     if (this.animationFrame) {
       cancelAnimationFrame(this.animationFrame);
     }
 
     this.animationFrame = requestAnimationFrame(() => {
-      // Perform rendering optimizations
       this.optimizeRendering();
     });
   }
 
   private pauseOptimizations() {
-    // Pause expensive operations when app is not visible
     if (this.animationFrame) {
       cancelAnimationFrame(this.animationFrame);
       this.animationFrame = null;
@@ -82,7 +113,6 @@ export class OptimizationManager {
   }
 
   private resumeOptimizations() {
-    // Resume optimizations when app becomes visible
     this.optimizeRendering();
   }
 
@@ -101,6 +131,8 @@ export class OptimizationManager {
     // Enable hardware acceleration for smooth animations
     element.style.transform = 'translateZ(0)';
     element.style.willChange = 'transform, opacity';
+    element.style.backfaceVisibility = 'hidden';
+    element.style.perspective = '1000px';
   }
 
   cleanup() {
@@ -110,6 +142,12 @@ export class OptimizationManager {
     if (this.performanceObserver) {
       this.performanceObserver.disconnect();
     }
+    
+    // Cleanup web workers
+    this.workers.forEach(worker => {
+      worker.terminate();
+    });
+    this.workers = [];
   }
 }
 

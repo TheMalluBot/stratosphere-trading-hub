@@ -6,11 +6,8 @@ import { toast } from 'sonner';
 export function useDesktopIntegration() {
   const navigate = useNavigate();
 
-  // Check if running in Electron (will be false in web environment)
-  const isElectron = typeof window !== 'undefined' && !!window.electronAPI;
-
   const showNotification = useCallback(async (title: string, body: string, icon?: string) => {
-    // Web notification fallback
+    // Web notification implementation
     if ('Notification' in window) {
       if (Notification.permission === 'granted') {
         new Notification(title, { body, icon });
@@ -29,28 +26,18 @@ export function useDesktopIntegration() {
     }
   }, []);
 
-  const minimizeToTray = useCallback(async () => {
-    // Web fallback - just show a toast
-    toast.info('Minimize to tray not available in web mode');
-  }, []);
-
-  const focusWindow = useCallback(async () => {
-    // Web fallback - focus the window
-    window.focus();
-  }, []);
-
   const getSystemInfo = useCallback(async () => {
-    // Web fallback - return browser info
+    // Web environment system info
     return {
       platform: navigator.platform,
-      arch: 'unknown',
-      nodeVersion: 'N/A',
-      electronVersion: 'N/A',
-      userAgent: navigator.userAgent
+      arch: 'web',
+      userAgent: navigator.userAgent,
+      cores: navigator.hardwareConcurrency || 4,
+      memory: (navigator as any).deviceMemory || 'unknown'
     };
   }, []);
 
-  // Setup keyboard shortcuts for web environment
+  // Setup keyboard shortcuts for maximum efficiency
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       // Ctrl/Cmd + 1 - Dashboard
@@ -90,10 +77,7 @@ export function useDesktopIntegration() {
   }, [navigate]);
 
   return {
-    isElectron,
     showNotification,
-    minimizeToTray,
-    focusWindow,
     getSystemInfo,
   };
 }

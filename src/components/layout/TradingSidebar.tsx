@@ -23,6 +23,8 @@ import {
   Settings,
   Activity,
   Zap,
+  Shield,
+  Target,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 
@@ -61,6 +63,11 @@ const tradingActions = [
     icon: Activity,
   },
   {
+    title: "Trading Management",
+    url: "/trading-management",
+    icon: Target,
+  },
+  {
     title: "Backtesting",
     url: "/backtesting",
     icon: Zap,
@@ -81,7 +88,7 @@ const analysisTools = [
   {
     title: "Risk Management",
     url: "/risk-management",
-    icon: BookOpen,
+    icon: Shield,
   },
   {
     title: "Trading Journal",

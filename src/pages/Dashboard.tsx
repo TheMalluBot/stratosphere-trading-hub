@@ -1,10 +1,11 @@
 
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { TrendingUp, TrendingDown, DollarSign, Activity, Zap, List, FileText } from "lucide-react";
+import { TrendingUp, DollarSign } from "lucide-react";
 import { Link } from "react-router-dom";
+import PortfolioStats from "@/components/dashboard/PortfolioStats";
+import MarketOverview from "@/components/dashboard/MarketOverview";
+import QuickActions from "@/components/dashboard/QuickActions";
 
 interface MarketData {
   symbol: string;
@@ -43,22 +44,6 @@ const Dashboard = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      minimumFractionDigits: 2,
-    }).format(price);
-  };
-
-  const formatCryptoPrice = (price: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-    }).format(price);
-  };
-
   return (
     <div className="flex-1 space-y-6 p-6 overflow-auto custom-scrollbar">
       <div className="flex items-center justify-between">
@@ -85,170 +70,13 @@ const Dashboard = () => {
       </div>
 
       {/* Portfolio Overview */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Portfolio Value</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatPrice(portfolioStats.totalValue)}</div>
-            <p className="text-xs text-muted-foreground">
-              Total invested capital
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Today's P&L</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className={`text-2xl font-bold ${portfolioStats.todayPnL >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-              {portfolioStats.todayPnL >= 0 ? '+' : ''}{formatPrice(portfolioStats.todayPnL)}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {portfolioStats.todayPnLPercent >= 0 ? '+' : ''}{portfolioStats.todayPnLPercent.toFixed(2)}% from yesterday
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total P&L</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className={`text-2xl font-bold ${portfolioStats.totalPnL >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-              {portfolioStats.totalPnL >= 0 ? '+' : ''}{formatPrice(portfolioStats.totalPnL)}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {portfolioStats.totalPnLPercent >= 0 ? '+' : ''}{portfolioStats.totalPnLPercent.toFixed(2)}% overall return
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Strategies</CardTitle>
-            <Zap className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">3</div>
-            <p className="text-xs text-muted-foreground">
-              Running algorithms
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+      <PortfolioStats portfolioStats={portfolioStats} />
 
       {/* Market Overview */}
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Indian Markets</CardTitle>
-            <CardDescription>Live indices and market status</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {marketData.slice(0, 2).map((item) => (
-                <div key={item.symbol} className="flex items-center justify-between p-3 rounded-lg border">
-                  <div>
-                    <div className="font-semibold">{item.symbol}</div>
-                    <div className="text-2xl font-bold">{item.price.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div>
-                  </div>
-                  <div className="text-right">
-                    <div className={`flex items-center gap-1 ${item.change >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                      {item.change >= 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-                      <span>{item.change >= 0 ? '+' : ''}{item.change.toFixed(2)}</span>
-                    </div>
-                    <Badge variant={item.changePercent >= 0 ? "default" : "destructive"} className="mt-1">
-                      {item.changePercent >= 0 ? '+' : ''}{item.changePercent.toFixed(2)}%
-                    </Badge>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Crypto Markets</CardTitle>
-            <CardDescription>Major cryptocurrencies on MEXC</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {marketData.slice(2, 4).map((item) => (
-                <div key={item.symbol} className="flex items-center justify-between p-3 rounded-lg border">
-                  <div>
-                    <div className="font-semibold">{item.symbol}</div>
-                    <div className="text-2xl font-bold">{formatCryptoPrice(item.price)}</div>
-                  </div>
-                  <div className="text-right">
-                    <div className={`flex items-center gap-1 ${item.change >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                      {item.change >= 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-                      <span>{item.change >= 0 ? '+' : ''}${item.change.toFixed(2)}</span>
-                    </div>
-                    <Badge variant={item.changePercent >= 0 ? "default" : "destructive"} className="mt-1">
-                      {item.changePercent >= 0 ? '+' : ''}{item.changePercent.toFixed(2)}%
-                    </Badge>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <MarketOverview marketData={marketData} />
 
       {/* Quick Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Quick Actions</CardTitle>
-          <CardDescription>Access key trading features</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
-            <Button asChild variant="outline" className="h-20 flex-col">
-              <Link to="/watchlist">
-                <List className="w-6 h-6 mb-2" />
-                Watchlist
-              </Link>
-            </Button>
-            <Button asChild variant="outline" className="h-20 flex-col">
-              <Link to="/trading">
-                <DollarSign className="w-6 h-6 mb-2" />
-                Live Trading
-              </Link>
-            </Button>
-            <Button asChild variant="outline" className="h-20 flex-col">
-              <Link to="/paper-trading">
-                <Activity className="w-6 h-6 mb-2" />
-                Paper Trade
-              </Link>
-            </Button>
-            <Button asChild variant="outline" className="h-20 flex-col">
-              <Link to="/backtesting">
-                <Zap className="w-6 h-6 mb-2" />
-                Backtest
-              </Link>
-            </Button>
-            <Button asChild variant="outline" className="h-20 flex-col">
-              <Link to="/analysis">
-                <TrendingUp className="w-6 h-6 mb-2" />
-                Analysis
-              </Link>
-            </Button>
-            <Button asChild variant="outline" className="h-20 flex-col">
-              <Link to="/journal">
-                <FileText className="w-6 h-6 mb-2" />
-                Journal
-              </Link>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      <QuickActions />
     </div>
   );
 };

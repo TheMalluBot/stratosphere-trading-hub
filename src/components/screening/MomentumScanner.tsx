@@ -1,10 +1,9 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Zap, TrendingUp, Volume2, AlertCircle, Refresh } from "lucide-react";
+import { Zap, TrendingUp, Volume2, AlertCircle, RefreshCw } from "lucide-react";
 
 interface MomentumStock {
   symbol: string;
@@ -129,7 +128,7 @@ export function MomentumScanner() {
             variant="outline"
             className="ml-auto"
           >
-            <Refresh className={`w-3 h-3 mr-1 ${isScanning ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-3 h-3 mr-1 ${isScanning ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
         </CardTitle>

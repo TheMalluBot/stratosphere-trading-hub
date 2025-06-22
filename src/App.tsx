@@ -23,6 +23,7 @@ import Settings from "@/pages/Settings";
 import NotFound from "@/pages/NotFound";
 import Index from "@/pages/Index";
 import TradingView from "@/pages/TradingView";
+import AlgoTrading from "@/pages/AlgoTrading";
 
 const queryClient = new QueryClient();
 
@@ -42,6 +43,7 @@ function App() {
                   <Route path="watchlist" element={<Watchlist />} />
                   <Route path="trading" element={<Trading />} />
                   <Route path="paper-trading" element={<PaperTrading />} />
+                  <Route path="algo-trading" element={<AlgoTrading />} />
                   <Route path="trading-management" element={<TradingManagement />} />
                   <Route path="backtesting" element={<Backtesting />} />
                   <Route path="market-intelligence" element={<MarketIntelligence />} />

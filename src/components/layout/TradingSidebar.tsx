@@ -1,4 +1,3 @@
-
 import {
   Sidebar,
   SidebarContent,
@@ -26,6 +25,7 @@ import {
   Shield,
   Target,
   Monitor,
+  Bot,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 
@@ -67,6 +67,11 @@ const tradingActions = [
     title: "Paper Trading",
     url: "/paper-trading",
     icon: Activity,
+  },
+  {
+    title: "Algo Trading",
+    url: "/algo-trading",
+    icon: Bot,
   },
   {
     title: "Trading Management",

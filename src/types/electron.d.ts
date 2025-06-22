@@ -1,5 +1,5 @@
 
-// Electron API type definitions
+// Electron API type definitions (optional for web compatibility)
 declare global {
   interface Window {
     electronAPI?: {

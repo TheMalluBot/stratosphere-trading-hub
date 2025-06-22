@@ -9,23 +9,25 @@ export function DesktopIntegration() {
   useEffect(() => {
     if (isElectron) {
       console.log('🖥️ Running in Electron desktop mode');
-      
-      // Initialize performance optimizations
-      optimizationManager.optimizeRendering();
-      
-      // Show welcome notification
       showNotification(
         'AlgoTrade Pro', 
         'Desktop application started successfully!'
       );
-      
-      // Enable hardware acceleration for better performance
-      const appElement = document.getElementById('root');
-      if (appElement) {
-        optimizationManager.enableGPUAcceleration(appElement);
-      }
     } else {
       console.log('🌐 Running in web browser mode');
+      showNotification(
+        'AlgoTrade Pro', 
+        'Web application loaded successfully!'
+      );
+    }
+    
+    // Initialize performance optimizations for web
+    optimizationManager.optimizeRendering();
+    
+    // Enable hardware acceleration for better performance
+    const appElement = document.getElementById('root');
+    if (appElement) {
+      optimizationManager.enableGPUAcceleration(appElement);
     }
 
     return () => {

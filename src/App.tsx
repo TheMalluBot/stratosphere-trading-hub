@@ -22,6 +22,7 @@ import Journal from "@/pages/Journal";
 import Settings from "@/pages/Settings";
 import NotFound from "@/pages/NotFound";
 import Index from "@/pages/Index";
+import TradingView from "@/pages/TradingView";
 
 const queryClient = new QueryClient();
 
@@ -36,6 +37,7 @@ function App() {
                 <Route path="/" element={<TradingLayout />}>
                   <Route index element={<Index />} />
                   <Route path="dashboard" element={<Dashboard />} />
+                  <Route path="tradingview" element={<TradingView />} />
                   <Route path="charts" element={<Charts />} />
                   <Route path="watchlist" element={<Watchlist />} />
                   <Route path="trading" element={<Trading />} />

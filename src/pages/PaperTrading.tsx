@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Activity, TrendingUp, TrendingDown, DollarSign, RotateCcw } from "lucide-react";
+import { Activity, TrendingUp, TrendingDown, DollarSign, RotateCcw, BarChart3 } from "lucide-react";
 
 const PaperTrading = () => {
   const [balance, setBalance] = useState(100000);
@@ -263,144 +262,177 @@ const PaperTrading = () => {
           </Card>
         </div>
 
-        {/* Positions and History */}
+        {/* Enhanced Chart Integration for Paper Trading */}
         <div className="lg:col-span-2">
-          <Tabs defaultValue="positions" className="space-y-4">
-            <TabsList>
-              <TabsTrigger value="positions">Paper Positions</TabsTrigger>
-              <TabsTrigger value="history">Trade History</TabsTrigger>
-              <TabsTrigger value="performance">Performance</TabsTrigger>
-            </TabsList>
+          <div className="space-y-6">
+            {/* Paper Trading Chart */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <BarChart3 className="w-5 h-5" />
+                  {selectedSymbol} - Paper Trading Chart
+                  <Badge variant="outline" className="bg-blue-500/10 text-blue-400 border-blue-500/20">
+                    <Activity className="w-3 h-3 mr-1" />
+                    Virtual Mode
+                  </Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="chart-container h-[300px] flex items-center justify-center bg-muted/20 rounded-lg">
+                  <div className="text-center">
+                    <BarChart3 className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">Paper Trading Chart</h3>
+                    <p className="text-muted-foreground mb-4">
+                      Practice with real market data for {selectedSymbol}
+                    </p>
+                    <div className="text-sm text-muted-foreground">
+                      <p>Current Price: ₹{currentPrice.toFixed(2)}</p>
+                      <p>Paper Balance: ₹{balance.toLocaleString('en-IN')}</p>
+                      <p>Chart integration ready for TradingView widget</p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
-            <TabsContent value="positions">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Paper Positions</CardTitle>
-                  <CardDescription>Your virtual trading positions</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="rounded-md border">
-                    <table className="trading-table">
-                      <thead>
-                        <tr>
-                          <th>Symbol</th>
-                          <th>Side</th>
-                          <th>Quantity</th>
-                          <th>Avg Price</th>
-                          <th>Current Price</th>
-                          <th>P&L</th>
-                          <th>Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {paperPositions.map((position, index) => (
-                          <tr key={index}>
-                            <td className="font-semibold">{position.symbol}</td>
-                            <td>
-                              <Badge variant={position.side === "long" ? "default" : "destructive"}>
-                                {position.side.toUpperCase()}
-                              </Badge>
-                            </td>
-                            <td>{position.quantity}</td>
-                            <td>₹{position.avgPrice.toFixed(2)}</td>
-                            <td>₹{position.currentPrice.toFixed(2)}</td>
-                            <td className={position.pnl >= 0 ? "text-green-400" : "text-red-400"}>
-                              {position.pnl >= 0 ? "+" : ""}₹{position.pnl.toFixed(2)}
-                              <div className="text-xs">
-                                ({position.pnlPercent >= 0 ? "+" : ""}{position.pnlPercent.toFixed(2)}%)
-                              </div>
-                            </td>
-                            <td>
-                              <Button variant="outline" size="sm">
-                                Close
-                              </Button>
-                            </td>
+            {/* Positions and History Tabs */}
+            <Tabs defaultValue="positions" className="space-y-4">
+              <TabsList>
+                <TabsTrigger value="positions">Paper Positions</TabsTrigger>
+                <TabsTrigger value="history">Trade History</TabsTrigger>
+                <TabsTrigger value="performance">Performance</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="positions">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Paper Positions</CardTitle>
+                    <CardDescription>Your virtual trading positions</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="rounded-md border">
+                      <table className="trading-table">
+                        <thead>
+                          <tr>
+                            <th>Symbol</th>
+                            <th>Side</th>
+                            <th>Quantity</th>
+                            <th>Avg Price</th>
+                            <th>Current Price</th>
+                            <th>P&L</th>
+                            <th>Actions</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
+                        </thead>
+                        <tbody>
+                          {paperPositions.map((position, index) => (
+                            <tr key={index}>
+                              <td className="font-semibold">{position.symbol}</td>
+                              <td>
+                                <Badge variant={position.side === "long" ? "default" : "destructive"}>
+                                  {position.side.toUpperCase()}
+                                </Badge>
+                              </td>
+                              <td>{position.quantity}</td>
+                              <td>₹{position.avgPrice.toFixed(2)}</td>
+                              <td>₹{position.currentPrice.toFixed(2)}</td>
+                              <td className={position.pnl >= 0 ? "text-green-400" : "text-red-400"}>
+                                {position.pnl >= 0 ? "+" : ""}₹{position.pnl.toFixed(2)}
+                                <div className="text-xs">
+                                  ({position.pnlPercent >= 0 ? "+" : ""}{position.pnlPercent.toFixed(2)}%)
+                                </div>
+                              </td>
+                              <td>
+                                <Button variant="outline" size="sm">
+                                  Close
+                                </Button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
 
-            <TabsContent value="history">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Trade History</CardTitle>
-                  <CardDescription>Your paper trading transactions</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="rounded-md border">
-                    <table className="trading-table">
-                      <thead>
-                        <tr>
-                          <th>Symbol</th>
-                          <th>Side</th>
-                          <th>Quantity</th>
-                          <th>Price</th>
-                          <th>Timestamp</th>
-                          <th>P&L</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {tradeHistory.map((trade) => (
-                          <tr key={trade.id}>
-                            <td className="font-semibold">{trade.symbol}</td>
-                            <td>
-                              <Badge variant={trade.side === "buy" ? "default" : "destructive"}>
-                                {trade.side.toUpperCase()}
-                              </Badge>
-                            </td>
-                            <td>{trade.quantity}</td>
-                            <td>₹{trade.price.toFixed(2)}</td>
-                            <td className="text-muted-foreground">{trade.timestamp}</td>
-                            <td className="text-muted-foreground">-</td>
+              <TabsContent value="history">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Trade History</CardTitle>
+                    <CardDescription>Your paper trading transactions</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="rounded-md border">
+                      <table className="trading-table">
+                        <thead>
+                          <tr>
+                            <th>Symbol</th>
+                            <th>Side</th>
+                            <th>Quantity</th>
+                            <th>Price</th>
+                            <th>Timestamp</th>
+                            <th>P&L</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
+                        </thead>
+                        <tbody>
+                          {tradeHistory.map((trade) => (
+                            <tr key={trade.id}>
+                              <td className="font-semibold">{trade.symbol}</td>
+                              <td>
+                                <Badge variant={trade.side === "buy" ? "default" : "destructive"}>
+                                  {trade.side.toUpperCase()}
+                                </Badge>
+                              </td>
+                              <td>{trade.quantity}</td>
+                              <td>₹{trade.price.toFixed(2)}</td>
+                              <td className="text-muted-foreground">{trade.timestamp}</td>
+                              <td className="text-muted-foreground">-</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
 
-            <TabsContent value="performance">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Performance Analytics</CardTitle>
-                  <CardDescription>Track your paper trading performance</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="p-4 rounded-lg border">
-                      <div className="text-sm text-muted-foreground">Win Rate</div>
-                      <div className="text-2xl font-bold text-green-400">75%</div>
-                      <div className="text-xs text-muted-foreground">3 of 4 trades profitable</div>
+              <TabsContent value="performance">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Performance Analytics</CardTitle>
+                    <CardDescription>Track your paper trading performance</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="p-4 rounded-lg border">
+                        <div className="text-sm text-muted-foreground">Win Rate</div>
+                        <div className="text-2xl font-bold text-green-400">75%</div>
+                        <div className="text-xs text-muted-foreground">3 of 4 trades profitable</div>
+                      </div>
+                      
+                      <div className="p-4 rounded-lg border">
+                        <div className="text-sm text-muted-foreground">Average Return</div>
+                        <div className="text-2xl font-bold text-blue-400">+0.32%</div>
+                        <div className="text-xs text-muted-foreground">Per trade</div>
+                      </div>
+                      
+                      <div className="p-4 rounded-lg border">
+                        <div className="text-sm text-muted-foreground">Best Trade</div>
+                        <div className="text-2xl font-bold text-green-400">+₹1,812</div>
+                        <div className="text-xs text-muted-foreground">RELIANCE position</div>
+                      </div>
+                      
+                      <div className="p-4 rounded-lg border">
+                        <div className="text-sm text-muted-foreground">Worst Trade</div>
+                        <div className="text-2xl font-bold text-red-400">-₹1,487</div>
+                        <div className="text-xs text-muted-foreground">TCS position</div>
+                      </div>
                     </div>
-                    
-                    <div className="p-4 rounded-lg border">
-                      <div className="text-sm text-muted-foreground">Average Return</div>
-                      <div className="text-2xl font-bold text-blue-400">+0.32%</div>
-                      <div className="text-xs text-muted-foreground">Per trade</div>
-                    </div>
-                    
-                    <div className="p-4 rounded-lg border">
-                      <div className="text-sm text-muted-foreground">Best Trade</div>
-                      <div className="text-2xl font-bold text-green-400">+₹1,812</div>
-                      <div className="text-xs text-muted-foreground">RELIANCE position</div>
-                    </div>
-                    
-                    <div className="p-4 rounded-lg border">
-                      <div className="text-sm text-muted-foreground">Worst Trade</div>
-                      <div className="text-2xl font-bold text-red-400">-₹1,487</div>
-                      <div className="text-xs text-muted-foreground">TCS position</div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+          </div>
         </div>
       </div>
     </div>

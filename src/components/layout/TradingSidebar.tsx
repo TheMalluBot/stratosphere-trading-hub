@@ -25,6 +25,7 @@ import {
   Zap,
   Shield,
   Target,
+  Monitor,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 
@@ -33,6 +34,11 @@ const tradingMenuItems = [
     title: "Dashboard",
     url: "/",
     icon: BarChart3,
+  },
+  {
+    title: "TradingView",
+    url: "/tradingview",
+    icon: Monitor,
   },
   {
     title: "Charts",

@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { TrendingUp, TrendingDown, DollarSign, Activity, AlertTriangle } from "lucide-react";
+import { TrendingUp, TrendingDown, DollarSign, Activity, AlertTriangle, BarChart3 } from "lucide-react";
 
 const Trading = () => {
   const [orderType, setOrderType] = useState("market");
@@ -238,97 +237,125 @@ const Trading = () => {
           </Card>
         </div>
 
-        {/* Positions and Orders */}
+        {/* Enhanced Chart Integration */}
         <div className="lg:col-span-2">
-          <Tabs defaultValue="positions" className="space-y-4">
-            <TabsList>
-              <TabsTrigger value="positions">Positions</TabsTrigger>
-              <TabsTrigger value="orders">Orders</TabsTrigger>
-              <TabsTrigger value="history">Trade History</TabsTrigger>
-            </TabsList>
+          <div className="space-y-6">
+            {/* Mini Chart */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <BarChart3 className="w-5 h-5" />
+                  {selectedSymbol} - Live Chart
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="chart-container h-[300px] flex items-center justify-center bg-muted/20 rounded-lg">
+                  <div className="text-center">
+                    <BarChart3 className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">Live Trading Chart</h3>
+                    <p className="text-muted-foreground mb-4">
+                      Real-time price action for {selectedSymbol}
+                    </p>
+                    <div className="text-sm text-muted-foreground">
+                      <p>Current Price: ₹{currentPrice.toFixed(2)}</p>
+                      <p>Ready for: TradingView widget integration</p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
-            <TabsContent value="positions">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Open Positions</CardTitle>
-                  <CardDescription>Your current trading positions</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="rounded-md border">
-                    <table className="trading-table">
-                      <thead>
-                        <tr>
-                          <th>Symbol</th>
-                          <th>Side</th>
-                          <th>Quantity</th>
-                          <th>Avg Price</th>
-                          <th>Current Price</th>
-                          <th>P&L</th>
-                          <th>Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {positions.map((position, index) => (
-                          <tr key={index}>
-                            <td className="font-semibold">{position.symbol}</td>
-                            <td>
-                              <Badge variant={position.side === "long" ? "default" : "destructive"}>
-                                {position.side.toUpperCase()}
-                              </Badge>
-                            </td>
-                            <td>{position.quantity}</td>
-                            <td>₹{position.avgPrice.toFixed(2)}</td>
-                            <td>₹{position.currentPrice.toFixed(2)}</td>
-                            <td className={position.pnl >= 0 ? "text-green-400" : "text-red-400"}>
-                              {position.pnl >= 0 ? "+" : ""}₹{position.pnl.toFixed(2)}
-                              <div className="text-xs">
-                                ({position.pnlPercent >= 0 ? "+" : ""}{position.pnlPercent.toFixed(2)}%)
-                              </div>
-                            </td>
-                            <td>
-                              <Button variant="outline" size="sm">
-                                Close
-                              </Button>
-                            </td>
+            {/* Positions and Orders Tabs */}
+            <Tabs defaultValue="positions" className="space-y-4">
+              <TabsList>
+                <TabsTrigger value="positions">Positions</TabsTrigger>
+                <TabsTrigger value="orders">Orders</TabsTrigger>
+                <TabsTrigger value="history">Trade History</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="positions">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Open Positions</CardTitle>
+                    <CardDescription>Your current trading positions</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="rounded-md border">
+                      <table className="trading-table">
+                        <thead>
+                          <tr>
+                            <th>Symbol</th>
+                            <th>Side</th>
+                            <th>Quantity</th>
+                            <th>Avg Price</th>
+                            <th>Current Price</th>
+                            <th>P&L</th>
+                            <th>Actions</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
+                        </thead>
+                        <tbody>
+                          {positions.map((position, index) => (
+                            <tr key={index}>
+                              <td className="font-semibold">{position.symbol}</td>
+                              <td>
+                                <Badge variant={position.side === "long" ? "default" : "destructive"}>
+                                  {position.side.toUpperCase()}
+                                </Badge>
+                              </td>
+                              <td>{position.quantity}</td>
+                              <td>₹{position.avgPrice.toFixed(2)}</td>
+                              <td>₹{position.currentPrice.toFixed(2)}</td>
+                              <td className={position.pnl >= 0 ? "text-green-400" : "text-red-400"}>
+                                {position.pnl >= 0 ? "+" : ""}₹{position.pnl.toFixed(2)}
+                                <div className="text-xs">
+                                  ({position.pnlPercent >= 0 ? "+" : ""}{position.pnlPercent.toFixed(2)}%)
+                                </div>
+                              </td>
+                              <td>
+                                <Button variant="outline" size="sm">
+                                  Close
+                                </Button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
 
-            <TabsContent value="orders">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Active Orders</CardTitle>
-                  <CardDescription>Pending and partially filled orders</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-center py-8">
-                    <DollarSign className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                    <p className="text-muted-foreground">No active orders</p>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
+              <TabsContent value="orders">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Active Orders</CardTitle>
+                    <CardDescription>Pending and partially filled orders</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-center py-8">
+                      <DollarSign className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                      <p className="text-muted-foreground">No active orders</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
 
-            <TabsContent value="history">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Trade History</CardTitle>
-                  <CardDescription>Completed trades and transactions</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-center py-8">
-                    <Activity className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                    <p className="text-muted-foreground">No trade history available</p>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
+              <TabsContent value="history">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Trade History</CardTitle>
+                    <CardDescription>Completed trades and transactions</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-center py-8">
+                      <Activity className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                      <p className="text-muted-foreground">No trade history available</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+          </div>
         </div>
       </div>
 

@@ -1,14 +1,15 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { TrendingUp, TrendingDown, BarChart3, Maximize2 } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TrendingUp, TrendingDown, BarChart3, Maximize2, Settings, Activity } from "lucide-react";
 
 const Charts = () => {
   const [selectedSymbol, setSelectedSymbol] = useState("NIFTY50");
   const [timeframe, setTimeframe] = useState("1D");
+  const [chartType, setChartType] = useState("candlestick");
 
   const symbols = [
     { value: "NIFTY50", label: "NIFTY 50", type: "index" },
@@ -20,6 +21,7 @@ const Charts = () => {
   ];
 
   const timeframes = ["1m", "5m", "15m", "1H", "4H", "1D", "1W"];
+  const chartTypes = ["candlestick", "line", "area", "heikin-ashi"];
 
   const currentPrice = 21850.25;
   const priceChange = 125.30;
@@ -36,8 +38,12 @@ const Charts = () => {
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm">
-            <BarChart3 className="w-4 h-4 mr-2" />
+            <Settings className="w-4 h-4 mr-2" />
             Indicators
+          </Button>
+          <Button variant="outline" size="sm">
+            <Activity className="w-4 h-4 mr-2" />
+            Strategies
           </Button>
           <Button variant="outline" size="sm">
             <Maximize2 className="w-4 h-4 mr-2" />
@@ -46,7 +52,7 @@ const Charts = () => {
         </div>
       </div>
 
-      {/* Chart Controls */}
+      {/* Enhanced Chart Controls */}
       <div className="flex items-center gap-4 p-4 bg-card rounded-lg border">
         <div className="flex items-center gap-2">
           <label className="text-sm font-medium">Symbol:</label>
@@ -63,6 +69,22 @@ const Charts = () => {
                       {symbol.type}
                     </Badge>
                   </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <label className="text-sm font-medium">Chart Type:</label>
+          <Select value={chartType} onValueChange={setChartType}>
+            <SelectTrigger className="w-40">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {chartTypes.map((type) => (
+                <SelectItem key={type} value={type}>
+                  {type.charAt(0).toUpperCase() + type.slice(1)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -100,33 +122,54 @@ const Charts = () => {
         </div>
       </div>
 
-      {/* Main Chart Area */}
+      {/* Enhanced Main Chart Area */}
       <div className="grid gap-6 lg:grid-cols-4">
         <div className="lg:col-span-3">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <BarChart3 className="w-5 h-5" />
-                {symbols.find(s => s.value === selectedSymbol)?.label} - {timeframe}
+                {symbols.find(s => s.value === selectedSymbol)?.label} - {timeframe} ({chartType})
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="chart-container h-[600px] flex items-center justify-center bg-muted/20 rounded-lg">
                 <div className="text-center">
                   <BarChart3 className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">Chart Integration Ready</h3>
+                  <h3 className="text-lg font-semibold mb-2">Enhanced Chart Integration</h3>
                   <p className="text-muted-foreground mb-4">
-                    This space is prepared for TradingView or custom chart integration
+                    Ready for TradingView widget or Lightweight Charts integration
                   </p>
                   <div className="text-sm text-muted-foreground">
-                    <p>Features to be integrated:</p>
-                    <ul className="mt-2 space-y-1">
-                      <li>• Real-time candlestick charts</li>
-                      <li>• Technical indicators (RSI, MACD, Bollinger Bands)</li>
-                      <li>• Custom Pine Script strategies</li>
-                      <li>• Drawing tools and annotations</li>
-                      <li>• Multiple timeframe analysis</li>
-                    </ul>
+                    <div className="grid grid-cols-2 gap-4 max-w-md mx-auto">
+                      <div className="text-left">
+                        <p className="font-medium mb-2">Chart Features:</p>
+                        <ul className="space-y-1">
+                          <li>• {chartType} chart type</li>
+                          <li>• {timeframe} timeframe</li>
+                          <li>• Volume analysis</li>
+                          <li>• Drawing tools</li>
+                        </ul>
+                      </div>
+                      <div className="text-left">
+                        <p className="font-medium mb-2">Indicators:</p>
+                        <ul className="space-y-1">
+                          <li>• Moving averages</li>
+                          <li>• RSI & MACD</li>
+                          <li>• Bollinger Bands</li>
+                          <li>• Custom studies</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mt-6 flex gap-2 justify-center">
+                    <Badge variant="outline" className="bg-blue-500/10 text-blue-400">
+                      Symbol: {selectedSymbol}
+                    </Badge>
+                    <Badge variant="outline" className="bg-green-500/10 text-green-400">
+                      <Activity className="w-3 h-3 mr-1" />
+                      Live Data
+                    </Badge>
                   </div>
                 </div>
               </div>
@@ -134,7 +177,7 @@ const Charts = () => {
           </Card>
         </div>
 
-        {/* Side Panel */}
+        {/* Enhanced Side Panel */}
         <div className="space-y-6">
           <Card>
             <CardHeader>
@@ -185,6 +228,27 @@ const Charts = () => {
                 <span className="text-sm">Bollinger</span>
                 <Badge variant="secondary">Normal</Badge>
               </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Quick Actions</CardTitle>
+              <CardDescription>Chart tools</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <Button size="sm" variant="outline" className="w-full">
+                Add Trendline
+              </Button>
+              <Button size="sm" variant="outline" className="w-full">
+                Fibonacci Retracement
+              </Button>
+              <Button size="sm" variant="outline" className="w-full">
+                Support/Resistance
+              </Button>
+              <Button size="sm" variant="outline" className="w-full">
+                Volume Profile
+              </Button>
             </CardContent>
           </Card>
 

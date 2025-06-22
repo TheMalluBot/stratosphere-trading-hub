@@ -7,10 +7,10 @@ export function useDesktopIntegration() {
   const navigate = useNavigate();
 
   // Check if running in Electron
-  const isElectron = typeof window !== 'undefined' && window.electronAPI;
+  const isElectron = typeof window !== 'undefined' && !!window.electronAPI;
 
   const showNotification = useCallback(async (title: string, body: string, icon?: string) => {
-    if (isElectron) {
+    if (isElectron && window.electronAPI) {
       try {
         await window.electronAPI.showNotification({ title, body, icon });
       } catch (error) {
@@ -33,7 +33,7 @@ export function useDesktopIntegration() {
   }, [isElectron]);
 
   const minimizeToTray = useCallback(async () => {
-    if (isElectron) {
+    if (isElectron && window.electronAPI) {
       try {
         await window.electronAPI.minimizeToTray();
       } catch (error) {
@@ -43,7 +43,7 @@ export function useDesktopIntegration() {
   }, [isElectron]);
 
   const focusWindow = useCallback(async () => {
-    if (isElectron) {
+    if (isElectron && window.electronAPI) {
       try {
         await window.electronAPI.focusWindow();
       } catch (error) {
@@ -53,7 +53,7 @@ export function useDesktopIntegration() {
   }, [isElectron]);
 
   const getSystemInfo = useCallback(async () => {
-    if (isElectron) {
+    if (isElectron && window.electronAPI) {
       try {
         return await window.electronAPI.getSystemInfo();
       } catch (error) {
@@ -66,7 +66,7 @@ export function useDesktopIntegration() {
 
   // Setup electron event listeners
   useEffect(() => {
-    if (!isElectron) return;
+    if (!isElectron || !window.electronAPI) return;
 
     // Navigation handler
     const handleNavigateTo = (route: string) => {
@@ -109,12 +109,14 @@ export function useDesktopIntegration() {
 
     // Cleanup function
     return () => {
-      window.electronAPI.removeAllListeners('navigate-to');
-      window.electronAPI.removeAllListeners('new-strategy');
-      window.electronAPI.removeAllListeners('import-strategy');
-      window.electronAPI.removeAllListeners('start-trading');
-      window.electronAPI.removeAllListeners('stop-all-algos');
-      window.electronAPI.removeAllListeners('emergency-stop');
+      if (window.electronAPI) {
+        window.electronAPI.removeAllListeners('navigate-to');
+        window.electronAPI.removeAllListeners('new-strategy');
+        window.electronAPI.removeAllListeners('import-strategy');
+        window.electronAPI.removeAllListeners('start-trading');
+        window.electronAPI.removeAllListeners('stop-all-algos');
+        window.electronAPI.removeAllListeners('emergency-stop');
+      }
     };
   }, [isElectron, navigate]);
 

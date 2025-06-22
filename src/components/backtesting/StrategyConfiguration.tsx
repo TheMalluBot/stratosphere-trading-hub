@@ -39,22 +39,22 @@ const strategies = [
   {
     value: "stop-loss-tp",
     label: "Stop Loss & Take Profit",
-    description: "Risk management with fixed levels",
+    description: "Risk management with fixed levels and SMA crossovers",
   },
   {
     value: "deviation-trend",
     label: "Deviation Trend Profile",
-    description: "BigBeluga's trend deviation analysis (Coming Soon)",
+    description: "BigBeluga's trend deviation analysis with support/resistance zones",
   },
   {
     value: "volume-profile",
     label: "Multi-Layer Volume Profile",
-    description: "BigBeluga's volume analysis (Coming Soon)",
+    description: "BigBeluga's POC and value area volume analysis",
   },
   {
     value: "ultimate-combined",
     label: "🚀 Ultimate Combined Strategy",
-    description: "AI-powered combination of all strategies",
+    description: "AI-powered combination of all 5 strategies",
   },
 ];
 
@@ -166,11 +166,14 @@ export const StrategyConfiguration = ({
           <div className="p-3 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border">
             <div className="text-sm font-semibold text-blue-700">🚀 Ultimate Strategy Active</div>
             <div className="text-xs text-blue-600 mt-1">
-              Combining multiple Pine Script strategies with AI optimization
+              Combining all 5 Pine Script strategies with AI optimization
             </div>
-            <div className="flex gap-1 mt-2">
+            <div className="flex flex-wrap gap-1 mt-2">
               <Badge variant="secondary" className="text-xs">Linear Regression</Badge>
               <Badge variant="secondary" className="text-xs">Z-Score Trend</Badge>
+              <Badge variant="secondary" className="text-xs">Stop Loss/TP</Badge>
+              <Badge variant="secondary" className="text-xs">Deviation Trend</Badge>
+              <Badge variant="secondary" className="text-xs">Volume Profile</Badge>
             </div>
           </div>
         )}

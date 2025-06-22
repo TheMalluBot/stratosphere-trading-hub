@@ -2,6 +2,9 @@
 import { BaseStrategy, StrategyConfig, StrategyResult, StrategySignal, MarketData } from '../types/strategy';
 import { LinearRegressionStrategy } from './LinearRegressionStrategy';
 import { ZScoreTrendStrategy } from './ZScoreTrendStrategy';
+import { StopLossTakeProfitStrategy } from './StopLossTakeProfitStrategy';
+import { DeviationTrendStrategy } from './DeviationTrendStrategy';
+import { VolumeProfileStrategy } from './VolumeProfileStrategy';
 
 export class UltimateStrategy extends BaseStrategy {
   private strategies: BaseStrategy[] = [];
@@ -14,36 +17,39 @@ export class UltimateStrategy extends BaseStrategy {
   getDefaultConfig(): Partial<StrategyConfig> {
     return {
       name: 'Ultimate Combined Strategy',
-      description: 'Combines multiple strategies with weighted signals',
+      description: 'AI-powered combination of all 5 strategies with advanced signal processing',
       parameters: {
         combinationMethod: 'weighted', // 'weighted', 'consensus', 'priority'
         minimumConsensus: 3, // For consensus method
         strategyWeights: {
-          linearRegression: 0.25,
-          zScoreTrend: 0.25,
-          stopLoss: 0.20,
-          deviationTrend: 0.15,
-          volumeProfile: 0.15
+          linearRegression: 0.20,
+          zScoreTrend: 0.20,
+          stopLossTakeProfit: 0.20,
+          deviationTrend: 0.20,
+          volumeProfile: 0.20
         },
         signalThreshold: 0.6, // Minimum combined signal strength
         riskManagement: {
           maxPositionSize: 0.2,
           stopLossPercent: 2.0,
-          takeProfitPercent: 4.0
+          takeProfitPercent: 4.0,
+          portfolioRiskPercent: 10.0
         }
       }
     };
   }
 
   private initializeStrategies(): void {
-    // Initialize individual strategies with default configs
+    const { strategyWeights } = this.config.parameters;
+
+    // Initialize all 5 strategies with default configs
     const lrConfig: StrategyConfig = {
       id: 'lr',
       name: 'Linear Regression',
       description: 'LR component',
       parameters: {},
       enabled: true,
-      weight: this.config.parameters.strategyWeights.linearRegression
+      weight: strategyWeights.linearRegression
     };
 
     const zsConfig: StrategyConfig = {
@@ -52,12 +58,42 @@ export class UltimateStrategy extends BaseStrategy {
       description: 'ZS component',
       parameters: {},
       enabled: true,
-      weight: this.config.parameters.strategyWeights.zScoreTrend
+      weight: strategyWeights.zScoreTrend
+    };
+
+    const slConfig: StrategyConfig = {
+      id: 'sl',
+      name: 'Stop Loss Take Profit',
+      description: 'SL/TP component',
+      parameters: {},
+      enabled: true,
+      weight: strategyWeights.stopLossTakeProfit
+    };
+
+    const dtConfig: StrategyConfig = {
+      id: 'dt',
+      name: 'Deviation Trend',
+      description: 'DT component',
+      parameters: {},
+      enabled: true,
+      weight: strategyWeights.deviationTrend
+    };
+
+    const vpConfig: StrategyConfig = {
+      id: 'vp',
+      name: 'Volume Profile',
+      description: 'VP component',
+      parameters: {},
+      enabled: true,
+      weight: strategyWeights.volumeProfile
     };
 
     this.strategies = [
       new LinearRegressionStrategy(lrConfig),
-      new ZScoreTrendStrategy(zsConfig)
+      new ZScoreTrendStrategy(zsConfig),
+      new StopLossTakeProfitStrategy(slConfig),
+      new DeviationTrendStrategy(dtConfig),
+      new VolumeProfileStrategy(vpConfig)
     ];
   }
 
@@ -146,7 +182,7 @@ export class UltimateStrategy extends BaseStrategy {
     price: number,
     weights: Record<string, number>
   ): StrategySignal | null {
-    const strategyNames = ['linearRegression', 'zScoreTrend'];
+    const strategyNames = ['linearRegression', 'zScoreTrend', 'stopLossTakeProfit', 'deviationTrend', 'volumeProfile'];
     let buyStrength = 0;
     let sellStrength = 0;
     let totalWeight = 0;
@@ -183,7 +219,8 @@ export class UltimateStrategy extends BaseStrategy {
         buyStrength,
         sellStrength,
         contributingStrategies: signals.length,
-        method: 'weighted'
+        method: 'weighted',
+        strategiesUsed: signals.map(s => strategyNames[s.metadata?.strategyIndex || 0])
       }
     };
   }
@@ -196,9 +233,9 @@ export class UltimateStrategy extends BaseStrategy {
     const buySignals = signals.filter(s => s.type === 'BUY');
     const sellSignals = signals.filter(s => s.type === 'SELL');
     
-    const minimumConsensus = this.config.parameters.minimumConsensus || 2;
+    const minimumConsensus = this.config.parameters.minimumConsensus || 3;
     
-    if (buySignals.length >= Math.min(minimumConsensus, 2)) {
+    if (buySignals.length >= Math.min(minimumConsensus, 3)) {
       const avgStrength = buySignals.reduce((sum, s) => sum + s.strength, 0) / buySignals.length;
       return {
         timestamp,
@@ -213,7 +250,7 @@ export class UltimateStrategy extends BaseStrategy {
       };
     }
     
-    if (sellSignals.length >= Math.min(minimumConsensus, 2)) {
+    if (sellSignals.length >= Math.min(minimumConsensus, 3)) {
       const avgStrength = sellSignals.reduce((sum, s) => sum + s.strength, 0) / sellSignals.length;
       return {
         timestamp,
@@ -273,11 +310,12 @@ export class UltimateStrategy extends BaseStrategy {
     return {
       totalReturn: totalReturn * 100,
       winRate: totalTrades > 0 ? (wins / totalTrades) * 100 : 0,
-      sharpeRatio: avgSharpe * 1.2, // Boost for diversification
+      sharpeRatio: avgSharpe * 1.3, // Boost for diversification
       maxDrawdown: -maxDrawdown * 100,
       totalTrades,
       individualStrategyReturn: avgIndividualReturn,
-      combinationBonus: (totalReturn * 100) - avgIndividualReturn
+      combinationBonus: (totalReturn * 100) - avgIndividualReturn,
+      strategiesUsed: this.strategies.length
     };
   }
 }

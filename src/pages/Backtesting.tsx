@@ -5,6 +5,9 @@ import { toast } from "sonner";
 import { Play, Pause, RotateCcw } from "lucide-react";
 import { LinearRegressionStrategy } from "@/strategies/LinearRegressionStrategy";
 import { ZScoreTrendStrategy } from "@/strategies/ZScoreTrendStrategy";
+import { StopLossTakeProfitStrategy } from "@/strategies/StopLossTakeProfitStrategy";
+import { DeviationTrendStrategy } from "@/strategies/DeviationTrendStrategy";
+import { VolumeProfileStrategy } from "@/strategies/VolumeProfileStrategy";
 import { UltimateStrategy } from "@/strategies/UltimateStrategy";
 import { StrategyConfig, MarketData } from "@/types/strategy";
 import { StrategyConfiguration } from "@/components/backtesting/StrategyConfiguration";
@@ -74,12 +77,20 @@ const Backtesting = () => {
         case "z-score-trend":
           strategy = new ZScoreTrendStrategy(baseConfig);
           break;
+        case "stop-loss-tp":
+          strategy = new StopLossTakeProfitStrategy(baseConfig);
+          break;
+        case "deviation-trend":
+          strategy = new DeviationTrendStrategy(baseConfig);
+          break;
+        case "volume-profile":
+          strategy = new VolumeProfileStrategy(baseConfig);
+          break;
         case "ultimate-combined":
           strategy = new UltimateStrategy(baseConfig);
           break;
         default:
-          // For not-yet-implemented strategies, use mock results
-          strategy = new LinearRegressionStrategy(baseConfig);
+          strategy = new UltimateStrategy(baseConfig);
       }
 
       // Run the backtest
@@ -94,7 +105,8 @@ const Backtesting = () => {
         indicators: Object.keys(result.indicators).length,
         strategy: strategy.getName(),
         period: `${startDate} to ${endDate}`,
-        totalBars: marketData.length
+        totalBars: marketData.length,
+        strategiesUsed: result.performance.strategiesUsed || 1
       });
       
       toast.success(`Backtest completed! Found ${result.signals.length} signals`);

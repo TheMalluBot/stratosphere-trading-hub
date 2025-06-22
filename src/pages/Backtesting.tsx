@@ -1,18 +1,15 @@
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Play, Pause, RotateCcw } from "lucide-react";
-import { LinearRegressionStrategy } from "@/strategies/LinearRegressionStrategy";
-import { ZScoreTrendStrategy } from "@/strategies/ZScoreTrendStrategy";
-import { StopLossTakeProfitStrategy } from "@/strategies/StopLossTakeProfitStrategy";
-import { DeviationTrendStrategy } from "@/strategies/DeviationTrendStrategy";
-import { VolumeProfileStrategy } from "@/strategies/VolumeProfileStrategy";
-import { UltimateStrategy } from "@/strategies/UltimateStrategy";
-import { StrategyConfig, MarketData } from "@/types/strategy";
+import { Play, Pause, RotateCcw, Zap, TrendingUp } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
 import { StrategyConfiguration } from "@/components/backtesting/StrategyConfiguration";
 import { BacktestResults } from "@/components/backtesting/BacktestResults";
 import { StrategyDetails } from "@/components/backtesting/StrategyDetails";
+import { BacktestEngine, BacktestConfig, BacktestProgress } from "@/lib/backtesting/BacktestEngine";
 
 const Backtesting = () => {
   const [selectedStrategy, setSelectedStrategy] = useState("ultimate-combined");
@@ -23,28 +20,21 @@ const Backtesting = () => {
   const [initialCapital, setInitialCapital] = useState("100000");
   const [isRunning, setIsRunning] = useState(false);
   const [backtestResults, setBacktestResults] = useState<any>(null);
+  const [progress, setProgress] = useState<BacktestProgress | null>(null);
+  const [enableAdvanced, setEnableAdvanced] = useState(true);
+  
+  const engineRef = useRef<BacktestEngine | null>(null);
 
-  // Mock market data generator
-  const generateMockData = (symbol: string, days: number): MarketData[] => {
-    const data: MarketData[] = [];
-    let price = 2500; // Starting price
-    const startTime = new Date(startDate).getTime();
-    
-    for (let i = 0; i < days; i++) {
-      const timestamp = startTime + (i * 24 * 60 * 60 * 1000);
-      const change = (Math.random() - 0.5) * 0.04; // ±2% daily change
-      const open = price;
-      const close = price * (1 + change);
-      const high = Math.max(open, close) * (1 + Math.random() * 0.02);
-      const low = Math.min(open, close) * (1 - Math.random() * 0.02);
-      const volume = Math.floor(Math.random() * 1000000) + 100000;
-      
-      data.push({ timestamp, open, high, low, close, volume });
-      price = close;
-    }
-    
-    return data;
-  };
+  useEffect(() => {
+    engineRef.current = new BacktestEngine();
+    engineRef.current.setProgressCallback(setProgress);
+
+    return () => {
+      if (engineRef.current) {
+        engineRef.current.dispose();
+      }
+    };
+  }, []);
 
   const runBacktest = async () => {
     if (!symbol || !initialCapital) {
@@ -52,70 +42,67 @@ const Backtesting = () => {
       return;
     }
 
+    if (!engineRef.current) {
+      toast.error("Backtest engine not initialized");
+      return;
+    }
+
     setIsRunning(true);
-    toast.loading("Running advanced backtest...");
+    setProgress(null);
+    toast.loading("Initializing enhanced backtest engine...");
 
     try {
-      // Generate mock market data
-      const days = Math.ceil((new Date(endDate).getTime() - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24));
-      const marketData = generateMockData(symbol, days);
-      
-      // Create strategy instance based on selection
-      let strategy;
-      const baseConfig: StrategyConfig = {
-        id: selectedStrategy,
-        name: "",
-        description: "",
-        parameters: {},
-        enabled: true
+      const config: BacktestConfig = {
+        symbol,
+        timeframe,
+        startDate,
+        endDate,
+        initialCapital: parseInt(initialCapital),
+        strategies: [{
+          id: selectedStrategy,
+          name: selectedStrategy,
+          description: `Selected strategy: ${selectedStrategy}`,
+          parameters: {},
+          enabled: true
+        }],
+        enableMonteCarlo: enableAdvanced,
+        monteCarloRuns: 1000,
+        enableWalkForward: enableAdvanced
       };
 
-      switch (selectedStrategy) {
-        case "linear-regression":
-          strategy = new LinearRegressionStrategy(baseConfig);
-          break;
-        case "z-score-trend":
-          strategy = new ZScoreTrendStrategy(baseConfig);
-          break;
-        case "stop-loss-tp":
-          strategy = new StopLossTakeProfitStrategy(baseConfig);
-          break;
-        case "deviation-trend":
-          strategy = new DeviationTrendStrategy(baseConfig);
-          break;
-        case "volume-profile":
-          strategy = new VolumeProfileStrategy(baseConfig);
-          break;
-        case "ultimate-combined":
-          strategy = new UltimateStrategy(baseConfig);
-          break;
-        default:
-          strategy = new UltimateStrategy(baseConfig);
+      const results = await engineRef.current.runBacktest(config);
+      
+      if (results && results.length > 0) {
+        const result = results[0];
+        setBacktestResults({
+          ...result.performance,
+          signals: result.signals.length,
+          indicators: Object.keys(result.indicators).length,
+          strategy: selectedStrategy,
+          period: `${startDate} to ${endDate}`,
+          totalBars: Math.ceil((new Date(endDate).getTime() - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24)),
+          strategiesUsed: 1,
+          // Enhanced metrics
+          advanced: enableAdvanced ? {
+            calmarRatio: result.performance.calmarRatio || 0,
+            sortinoRatio: result.performance.sortinoRatio || 0,
+            informationRatio: result.performance.informationRatio || 0,
+            profitFactor: result.performance.profitFactor || 0,
+            ulcerIndex: result.performance.ulcerIndex || 0,
+            var95: result.performance.var95 || 0,
+            cvar95: result.performance.cvar95 || 0
+          } : null
+        });
+        
+        toast.success(`Enhanced backtest completed! Found ${result.signals.length} signals with advanced analytics`);
       }
-
-      // Run the backtest
-      const result = strategy.calculate(marketData);
-      
-      // Simulate processing time
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      setBacktestResults({
-        ...result.performance,
-        signals: result.signals.length,
-        indicators: Object.keys(result.indicators).length,
-        strategy: strategy.getName(),
-        period: `${startDate} to ${endDate}`,
-        totalBars: marketData.length,
-        strategiesUsed: result.performance.strategiesUsed || 1
-      });
-      
-      toast.success(`Backtest completed! Found ${result.signals.length} signals`);
       
     } catch (error) {
-      console.error("Backtest error:", error);
-      toast.error("Backtest failed. Please try again.");
+      console.error("Enhanced backtest error:", error);
+      toast.error("Enhanced backtest failed. Please try again.");
     } finally {
       setIsRunning(false);
+      setProgress(null);
     }
   };
 
@@ -127,6 +114,8 @@ const Backtesting = () => {
     setEndDate("2024-01-01");
     setInitialCapital("100000");
     setBacktestResults(null);
+    setProgress(null);
+    setEnableAdvanced(true);
     toast.success("Parameters reset to defaults");
   };
 
@@ -134,9 +123,12 @@ const Backtesting = () => {
     <div className="flex-1 space-y-6 p-6 overflow-auto custom-scrollbar">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Advanced Strategy Backtesting</h1>
+          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+            <Zap className="w-8 h-8 text-yellow-500" />
+            Enhanced Strategy Backtesting
+          </h1>
           <p className="text-muted-foreground">
-            Test individual strategies or the ultimate combined approach
+            Multi-threaded, client-side backtesting with advanced analytics
           </p>
         </div>
         <div className="flex gap-2">
@@ -153,16 +145,86 @@ const Backtesting = () => {
             ) : (
               <>
                 <Play className="w-4 h-4 mr-2" />
-                Run Backtest
+                Run Enhanced Backtest
               </>
             )}
           </Button>
         </div>
       </div>
 
+      {/* Performance Stats */}
+      <div className="grid gap-4 md:grid-cols-4">
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-2xl font-bold text-blue-500">
+              {navigator.hardwareConcurrency || 4}
+            </div>
+            <p className="text-xs text-muted-foreground">CPU Cores Available</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-2xl font-bold text-green-500">
+              Multi-threaded
+            </div>
+            <p className="text-xs text-muted-foreground">Processing Mode</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-2xl font-bold text-purple-500">
+              IndexedDB
+            </div>
+            <p className="text-xs text-muted-foreground">Data Caching</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-2xl font-bold text-orange-500">
+              {enableAdvanced ? 'ON' : 'OFF'}
+            </div>
+            <p className="text-xs text-muted-foreground">Advanced Analytics</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Progress Display */}
+      {progress && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="w-5 h-5" />
+              Backtest Progress
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <div className="flex justify-between text-sm mb-2">
+                <span>Phase: {progress.phase}</span>
+                <span>{Math.round(progress.progress)}%</span>
+              </div>
+              <Progress value={progress.progress} className="w-full" />
+              <p className="text-sm text-muted-foreground mt-1">{progress.message}</p>
+            </div>
+            
+            {progress.strategyProgress && (
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold">Strategy Progress:</h4>
+                {Object.entries(progress.strategyProgress).map(([strategy, progress]) => (
+                  <div key={strategy} className="flex justify-between text-xs">
+                    <span>{strategy}</span>
+                    <span>{Math.round(progress)}%</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Configuration Panel */}
-        <div className="lg:col-span-1">
+        <div className="lg:col-span-1 space-y-4">
           <StrategyConfiguration
             selectedStrategy={selectedStrategy}
             setSelectedStrategy={setSelectedStrategy}
@@ -178,6 +240,41 @@ const Backtesting = () => {
             setInitialCapital={setInitialCapital}
             onReset={resetParameters}
           />
+
+          {/* Advanced Options */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Advanced Analytics</CardTitle>
+              <CardDescription>Enhanced performance analysis</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium">Monte Carlo Simulation</p>
+                  <p className="text-sm text-muted-foreground">1000 simulation runs</p>
+                </div>
+                <Badge variant={enableAdvanced ? "default" : "secondary"}>
+                  {enableAdvanced ? "Enabled" : "Disabled"}
+                </Badge>
+              </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium">Walk-Forward Analysis</p>
+                  <p className="text-sm text-muted-foreground">Out-of-sample validation</p>
+                </div>
+                <Badge variant={enableAdvanced ? "default" : "secondary"}>
+                  {enableAdvanced ? "Enabled" : "Disabled"}
+                </Badge>
+              </div>
+              <Button 
+                variant="outline" 
+                className="w-full"
+                onClick={() => setEnableAdvanced(!enableAdvanced)}
+              >
+                {enableAdvanced ? "Disable" : "Enable"} Advanced Analytics
+              </Button>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Results Panel */}

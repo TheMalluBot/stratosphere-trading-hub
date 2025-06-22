@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -16,6 +15,10 @@ import Journal from "@/pages/Journal";
 import Analysis from "@/pages/Analysis";
 import Settings from "@/pages/Settings";
 import NotFound from "@/pages/NotFound";
+import MarketIntelligence from "@/pages/MarketIntelligence";
+import RiskManagement from "@/pages/RiskManagement";
+import StockScreener from "@/pages/StockScreener";
+import PortfolioAnalytics from "@/pages/PortfolioAnalytics";
 
 const queryClient = new QueryClient();
 
@@ -38,6 +41,10 @@ const App = () => (
                 <Route path="journal" element={<Journal />} />
                 <Route path="analysis" element={<Analysis />} />
                 <Route path="settings" element={<Settings />} />
+                <Route path="market-intelligence" element={<MarketIntelligence />} />
+                <Route path="risk-management" element={<RiskManagement />} />
+                <Route path="screener" element={<StockScreener />} />
+                <Route path="portfolio-analytics" element={<PortfolioAnalytics />} />
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>

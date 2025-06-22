@@ -42,6 +42,11 @@ const tradingMenuItems = [
     url: "/watchlist",
     icon: List,
   },
+  {
+    title: "Market Intelligence",
+    url: "/market-intelligence",
+    icon: Activity,
+  },
 ];
 
 const tradingActions = [
@@ -60,13 +65,23 @@ const tradingActions = [
     url: "/backtesting",
     icon: Zap,
   },
+  {
+    title: "Stock Screener",
+    url: "/screener",
+    icon: FileText,
+  },
 ];
 
 const analysisTools = [
   {
-    title: "Market Analysis",
-    url: "/analysis",
+    title: "Portfolio Analytics",
+    url: "/portfolio-analytics",
     icon: PieChart,
+  },
+  {
+    title: "Risk Management",
+    url: "/risk-management",
+    icon: BookOpen,
   },
   {
     title: "Trading Journal",

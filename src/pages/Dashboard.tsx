@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { TrendingUp, DollarSign, RefreshCw } from "lucide-react";
@@ -64,6 +65,7 @@ const Dashboard = () => {
       <MarketOverview 
         marketData={marketData.map(crypto => ({
           symbol: crypto.symbol,
+          name: crypto.name,
           price: crypto.price,
           change: crypto.change,
           changePercent: crypto.changePercent

@@ -1,4 +1,3 @@
-
 import { ApiKeyManager } from './apiKeyManager';
 
 export interface AccountInfo {
@@ -86,7 +85,7 @@ export class MexcPrivateService {
     const requestParams = { ...params, timestamp };
     
     const signature = await this.createSignature(requestParams);
-    requestParams.signature = signature;
+    const finalParams = { ...requestParams, signature };
 
     const headers: HeadersInit = {
       'X-MEXC-APIKEY': this.apiKey,
@@ -98,12 +97,12 @@ export class MexcPrivateService {
 
     if (method === 'GET') {
       const query = new URLSearchParams();
-      Object.keys(requestParams).forEach(key => {
-        query.append(key, requestParams[key].toString());
+      Object.keys(finalParams).forEach(key => {
+        query.append(key, finalParams[key].toString());
       });
       url += `?${query.toString()}`;
     } else {
-      body = JSON.stringify(requestParams);
+      body = JSON.stringify(finalParams);
     }
 
     const response = await fetch(url, {

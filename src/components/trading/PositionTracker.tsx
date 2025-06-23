@@ -1,64 +1,25 @@
 
-import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
-import { TrendingUp, TrendingDown, X, DollarSign } from "lucide-react";
-
-interface Position {
-  id: string;
-  symbol: string;
-  side: "long" | "short";
-  size: number;
-  entryPrice: number;
-  currentPrice: number;
-  pnl: number;
-  pnlPercent: number;
-  timestamp: number;
-}
+import { TrendingUp, TrendingDown, DollarSign, RefreshCw, Loader2 } from "lucide-react";
+import { usePortfolio } from "@/hooks/usePortfolio";
 
 const PositionTracker = () => {
-  const [positions, setPositions] = useState<Position[]>([]);
+  const { portfolio, refreshPortfolio, isLoading } = usePortfolio();
 
-  useEffect(() => {
-    // Mock positions for demonstration
-    const mockPositions: Position[] = [
-      {
-        id: "1",
-        symbol: "BTCUSDT",
-        side: "long",
-        size: 0.5,
-        entryPrice: 44500,
-        currentPrice: 45234,
-        pnl: 367,
-        pnlPercent: 1.65,
-        timestamp: Date.now() - 3600000
-      },
-      {
-        id: "2",
-        symbol: "ETHUSDT",
-        side: "short",
-        size: 2.8,
-        entryPrice: 2420,
-        currentPrice: 2398,
-        pnl: 61.6,
-        pnlPercent: 0.91,
-        timestamp: Date.now() - 1800000
-      }
-    ];
-    setPositions(mockPositions);
-  }, []);
-
-  const closePosition = (positionId: string) => {
-    const position = positions.find(p => p.id === positionId);
-    if (position) {
-      toast.success(`Closed ${position.side} position for ${position.symbol} with ${position.pnl >= 0 ? 'profit' : 'loss'} of $${Math.abs(position.pnl)}`);
-      setPositions(prev => prev.filter(p => p.id !== positionId));
-    }
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(amount);
   };
 
-  const totalPnl = positions.reduce((sum, position) => sum + position.pnl, 0);
+  const formatPercentage = (percent: number) => {
+    return `${percent >= 0 ? '+' : ''}${percent.toFixed(2)}%`;
+  };
 
   return (
     <Card>
@@ -67,67 +28,108 @@ const PositionTracker = () => {
           <div>
             <CardTitle className="flex items-center gap-2">
               <DollarSign className="w-5 h-5" />
-              Open Positions
+              Portfolio Positions
             </CardTitle>
             <CardDescription>
-              Track your active trading positions
+              Real-time portfolio tracking and performance
             </CardDescription>
           </div>
-          <Badge variant={totalPnl >= 0 ? "default" : "destructive"} className="text-lg">
-            {totalPnl >= 0 ? '+' : ''}${totalPnl.toFixed(2)}
-          </Badge>
+          <div className="flex items-center gap-2">
+            <Badge 
+              variant={portfolio.totalChange >= 0 ? "default" : "destructive"} 
+              className="text-sm"
+            >
+              {formatCurrency(portfolio.totalChange)} ({formatPercentage(portfolio.totalChangePercent)})
+            </Badge>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={refreshPortfolio}
+              disabled={isLoading}
+              className="h-8 w-8 p-0"
+            >
+              {isLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <RefreshCw className="w-4 h-4" />
+              )}
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent>
-        {positions.length === 0 ? (
+        {/* Portfolio Summary */}
+        <div className="mb-4 p-3 bg-muted/50 rounded-lg">
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <div className="text-muted-foreground">Total Value</div>
+              <div className="text-lg font-semibold">{formatCurrency(portfolio.totalValue)}</div>
+            </div>
+            <div>
+              <div className="text-muted-foreground">24h Change</div>
+              <div className={`text-lg font-semibold ${portfolio.totalChange >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                {formatCurrency(portfolio.totalChange)}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Positions List */}
+        {portfolio.positions.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
             <DollarSign className="w-8 h-8 mx-auto mb-2 opacity-50" />
-            <p>No open positions</p>
-            <p className="text-xs">Place a trade to see positions here</p>
+            <p>No positions found</p>
+            <p className="text-xs">Start trading to see positions here</p>
           </div>
         ) : (
           <div className="space-y-3">
-            {positions.map((position) => (
-              <div key={position.id} className="border rounded-lg p-4 hover:bg-muted/50 transition-colors">
+            {portfolio.positions.map((position) => (
+              <div key={position.symbol} className="border rounded-lg p-4 hover:bg-muted/50 transition-colors">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
-                    <span className="font-semibold">{position.symbol}</span>
-                    <Badge variant={position.side === "long" ? "default" : "secondary"}>
-                      {position.side === "long" ? (
-                        <TrendingUp className="w-3 h-3 mr-1" />
-                      ) : (
-                        <TrendingDown className="w-3 h-3 mr-1" />
-                      )}
-                      {position.side.toUpperCase()}
+                    <span className="font-semibold">{position.asset}</span>
+                    <Badge variant="outline" className="text-xs">
+                      {position.symbol}
                     </Badge>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => closePosition(position.id)}
-                    className="h-6 w-6 p-0 hover:bg-red-500/20"
-                  >
-                    <X className="w-3 h-3" />
-                  </Button>
+                  <div className="text-right">
+                    <div className="font-semibold">{formatCurrency(position.value)}</div>
+                    <div className={`text-xs ${position.changePercent24h >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                      {formatPercentage(position.changePercent24h)}
+                    </div>
+                  </div>
                 </div>
                 
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <div className="text-muted-foreground">Size</div>
-                    <div className="font-mono">{position.size} {position.symbol.replace("USDT", "")}</div>
+                    <div className="text-muted-foreground">Quantity</div>
+                    <div className="font-mono">{position.quantity.toFixed(6)} {position.asset}</div>
                   </div>
                   <div>
-                    <div className="text-muted-foreground">Entry Price</div>
-                    <div className="font-mono">${position.entryPrice.toLocaleString()}</div>
+                    <div className="text-muted-foreground">Price</div>
+                    <div className="font-mono">{formatCurrency(position.price)}</div>
                   </div>
                   <div>
-                    <div className="text-muted-foreground">Current Price</div>
-                    <div className="font-mono">${position.currentPrice.toLocaleString()}</div>
+                    <div className="text-muted-foreground">Free</div>
+                    <div className="font-mono text-green-500">{position.free.toFixed(6)}</div>
                   </div>
                   <div>
-                    <div className="text-muted-foreground">P&L</div>
-                    <div className={`font-mono ${position.pnl >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                      {position.pnl >= 0 ? '+' : ''}${position.pnl.toFixed(2)} ({position.pnlPercent >= 0 ? '+' : ''}{position.pnlPercent.toFixed(2)}%)
+                    <div className="text-muted-foreground">Locked</div>
+                    <div className="font-mono text-orange-500">{position.locked.toFixed(6)}</div>
+                  </div>
+                </div>
+
+                {/* P&L Display */}
+                <div className="mt-2 pt-2 border-t">
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-muted-foreground">24h P&L</span>
+                    <div className={`flex items-center gap-1 ${position.change24h >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                      {position.change24h >= 0 ? (
+                        <TrendingUp className="w-3 h-3" />
+                      ) : (
+                        <TrendingDown className="w-3 h-3" />
+                      )}
+                      <span className="font-mono">{formatCurrency(Math.abs(position.change24h))}</span>
                     </div>
                   </div>
                 </div>
@@ -135,6 +137,11 @@ const PositionTracker = () => {
             ))}
           </div>
         )}
+
+        {/* Last Update Info */}
+        <div className="mt-4 pt-3 border-t text-xs text-muted-foreground text-center">
+          Last updated: {new Date(portfolio.lastUpdate).toLocaleTimeString()}
+        </div>
       </CardContent>
     </Card>
   );

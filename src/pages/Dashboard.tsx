@@ -1,5 +1,4 @@
 
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { TrendingUp, DollarSign, RefreshCw } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -10,14 +9,6 @@ import { useCryptoData } from "@/hooks/useCryptoData";
 
 const Dashboard = () => {
   const { marketData, loading, error, lastUpdate, refreshData } = useCryptoData();
-
-  const [portfolioStats] = useState({
-    totalValue: 125000,
-    todayPnL: 2450,
-    todayPnLPercent: 1.96,
-    totalPnL: 15000,
-    totalPnLPercent: 13.64,
-  });
 
   return (
     <div className="flex-1 space-y-6 p-6 overflow-auto custom-scrollbar">
@@ -58,8 +49,8 @@ const Dashboard = () => {
         </div>
       )}
 
-      {/* Portfolio Overview */}
-      <PortfolioStats portfolioStats={portfolioStats} />
+      {/* Portfolio Overview - Now uses real data */}
+      <PortfolioStats />
 
       {/* Market Overview */}
       <MarketOverview 

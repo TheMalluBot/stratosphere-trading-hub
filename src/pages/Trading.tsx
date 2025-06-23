@@ -1,4 +1,5 @@
 
+import { useEffect } from "react";
 import { TrendingUp, BarChart3, DollarSign, Activity } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import OrderForm from "@/components/trading/OrderForm";
@@ -8,10 +9,20 @@ import LivePriceDisplay from "@/components/trading/LivePriceDisplay";
 import RealTimeOrderBook from "@/components/trading/RealTimeOrderBook";
 import TradingHistory from "@/components/trading/TradingHistory";
 import { orderManager } from "@/services/orderManager";
+import { enhancedWsService } from "@/services/enhancedWebSocketService";
 
 const Trading = () => {
   const selectedSymbol = "BTCUSDT";
   const connectionStatus = orderManager.getConnectionStatus();
+
+  useEffect(() => {
+    // Initialize enhanced WebSocket connection
+    enhancedWsService.connect();
+    
+    return () => {
+      // Cleanup not needed as service is global
+    };
+  }, []);
 
   return (
     <div className="flex-1 space-y-6 p-6 overflow-auto custom-scrollbar">
@@ -64,7 +75,7 @@ const Trading = () => {
           <RealTimeOrderBook symbol={selectedSymbol} />
         </div>
 
-        {/* Position Tracker */}
+        {/* Position Tracker - Now uses real portfolio data */}
         <div className="lg:col-span-1">
           <PositionTracker />
         </div>

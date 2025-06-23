@@ -2,7 +2,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, CandlestickChart } from "recharts";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from "recharts";
 import { TrendingUp, BarChart3, Wifi, WifiOff, Settings, Maximize2 } from "lucide-react";
 import { useRealTimePrice } from "@/hooks/useRealTimePrice";
 import { useState, useEffect } from "react";
@@ -30,7 +30,7 @@ interface ChartDataPoint {
 const TradingChart = ({ symbol = "BTCUSDT" }: TradingChartProps) => {
   const { priceData, isConnected } = useRealTimePrice(symbol);
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
-  const [chartType, setChartType] = useState<'line' | 'area' | 'candlestick'>('area');
+  const [chartType, setChartType] = useState<'line' | 'area'>('area');
   const [showIndicators, setShowIndicators] = useState(true);
 
   // Calculate technical indicators
@@ -181,7 +181,7 @@ const TradingChart = ({ symbol = "BTCUSDT" }: TradingChartProps) => {
           </div>
           <div className="flex items-center gap-2">
             <div className="flex gap-1">
-              {(['line', 'area', 'candlestick'] as const).map((type) => (
+              {(['line', 'area'] as const).map((type) => (
                 <Button
                   key={type}
                   variant={chartType === type ? 'default' : 'outline'}
@@ -217,74 +217,137 @@ const TradingChart = ({ symbol = "BTCUSDT" }: TradingChartProps) => {
       <CardContent>
         <div className="h-96">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={chartData}>
-              <defs>
-                <linearGradient id="priceGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={priceChange >= 0 ? "#22c55e" : "#ef4444"} stopOpacity={0.3}/>
-                  <stop offset="95%" stopColor={priceChange >= 0 ? "#22c55e" : "#ef4444"} stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-              <XAxis 
-                dataKey="time" 
-                axisLine={false}
-                tickLine={false}
-                tick={{ fontSize: 11 }}
-                interval="preserveStartEnd"
-              />
-              <YAxis 
-                domain={['dataMin - 200', 'dataMax + 200']}
-                axisLine={false}
-                tickLine={false}
-                tick={{ fontSize: 11 }}
-                tickFormatter={formatPrice}
-                width={80}
-              />
-              <Tooltip 
-                formatter={(value: any, name: string) => {
-                  if (name === 'close' || name === 'price') return [formatPrice(value), 'Price'];
-                  if (name === 'ma20') return [formatPrice(value), 'MA20'];
-                  if (name === 'ma50') return [formatPrice(value), 'MA50'];
-                  if (name === 'rsi') return [`${value}`, 'RSI'];
-                  return [value, name];
-                }}
-                labelStyle={{ color: 'hsl(var(--foreground))' }}
-                contentStyle={{ 
-                  backgroundColor: 'hsl(var(--background))',
-                  border: '1px solid hsl(var(--border))',
-                  borderRadius: '6px'
-                }}
-              />
-              <Area 
-                type="monotone" 
-                dataKey="close" 
-                stroke={priceChange >= 0 ? '#22c55e' : '#ef4444'}
-                strokeWidth={2}
-                fill="url(#priceGradient)"
-                dot={false}
-                activeDot={{ r: 4 }}
-              />
-              {showIndicators && (
-                <>
-                  <Line 
-                    type="monotone" 
-                    dataKey="ma20" 
-                    stroke="#3b82f6"
-                    strokeWidth={1}
-                    dot={false}
-                    strokeDasharray="2 2"
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="ma50" 
-                    stroke="#f59e0b"
-                    strokeWidth={1}
-                    dot={false}
-                    strokeDasharray="4 2"
-                  />
-                </>
-              )}
-            </AreaChart>
+            {chartType === 'area' ? (
+              <AreaChart data={chartData}>
+                <defs>
+                  <linearGradient id="priceGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor={priceChange >= 0 ? "#22c55e" : "#ef4444"} stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor={priceChange >= 0 ? "#22c55e" : "#ef4444"} stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                <XAxis 
+                  dataKey="time" 
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 11 }}
+                  interval="preserveStartEnd"
+                />
+                <YAxis 
+                  domain={['dataMin - 200', 'dataMax + 200']}
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 11 }}
+                  tickFormatter={formatPrice}
+                  width={80}
+                />
+                <Tooltip 
+                  formatter={(value: any, name: string) => {
+                    if (name === 'close' || name === 'price') return [formatPrice(value), 'Price'];
+                    if (name === 'ma20') return [formatPrice(value), 'MA20'];
+                    if (name === 'ma50') return [formatPrice(value), 'MA50'];
+                    if (name === 'rsi') return [`${value}`, 'RSI'];
+                    return [value, name];
+                  }}
+                  labelStyle={{ color: 'hsl(var(--foreground))' }}
+                  contentStyle={{ 
+                    backgroundColor: 'hsl(var(--background))',
+                    border: '1px solid hsl(var(--border))',
+                    borderRadius: '6px'
+                  }}
+                />
+                <Area 
+                  type="monotone" 
+                  dataKey="close" 
+                  stroke={priceChange >= 0 ? '#22c55e' : '#ef4444'}
+                  strokeWidth={2}
+                  fill="url(#priceGradient)"
+                  dot={false}
+                  activeDot={{ r: 4 }}
+                />
+                {showIndicators && (
+                  <>
+                    <Line 
+                      type="monotone" 
+                      dataKey="ma20" 
+                      stroke="#3b82f6"
+                      strokeWidth={1}
+                      dot={false}
+                      strokeDasharray="2 2"
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="ma50" 
+                      stroke="#f59e0b"
+                      strokeWidth={1}
+                      dot={false}
+                      strokeDasharray="4 2"
+                    />
+                  </>
+                )}
+              </AreaChart>
+            ) : (
+              <LineChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                <XAxis 
+                  dataKey="time" 
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 11 }}
+                  interval="preserveStartEnd"
+                />
+                <YAxis 
+                  domain={['dataMin - 200', 'dataMax + 200']}
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 11 }}
+                  tickFormatter={formatPrice}
+                  width={80}
+                />
+                <Tooltip 
+                  formatter={(value: any, name: string) => {
+                    if (name === 'close' || name === 'price') return [formatPrice(value), 'Price'];
+                    if (name === 'ma20') return [formatPrice(value), 'MA20'];
+                    if (name === 'ma50') return [formatPrice(value), 'MA50'];
+                    return [value, name];
+                  }}
+                  labelStyle={{ color: 'hsl(var(--foreground))' }}
+                  contentStyle={{ 
+                    backgroundColor: 'hsl(var(--background))',
+                    border: '1px solid hsl(var(--border))',
+                    borderRadius: '6px'
+                  }}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="close" 
+                  stroke={priceChange >= 0 ? '#22c55e' : '#ef4444'}
+                  strokeWidth={2}
+                  dot={false}
+                  activeDot={{ r: 4 }}
+                />
+                {showIndicators && (
+                  <>
+                    <Line 
+                      type="monotone" 
+                      dataKey="ma20" 
+                      stroke="#3b82f6"
+                      strokeWidth={1}
+                      dot={false}
+                      strokeDasharray="2 2"
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="ma50" 
+                      stroke="#f59e0b"
+                      strokeWidth={1}
+                      dot={false}
+                      strokeDasharray="4 2"
+                    />
+                  </>
+                )}
+              </LineChart>
+            )}
           </ResponsiveContainer>
         </div>
         

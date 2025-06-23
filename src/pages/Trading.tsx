@@ -1,4 +1,3 @@
-
 import { useEffect } from "react";
 import { TrendingUp, BarChart3, DollarSign, Activity } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +7,8 @@ import TradingChart from "@/components/trading/TradingChart";
 import LivePriceDisplay from "@/components/trading/LivePriceDisplay";
 import RealTimeOrderBook from "@/components/trading/RealTimeOrderBook";
 import TradingHistory from "@/components/trading/TradingHistory";
+import AdvancedOrderForm from "@/components/trading/AdvancedOrderForm";
+import SmartExecution from "@/components/trading/SmartExecution";
 import { orderManager } from "@/services/orderManager";
 import { enhancedWsService } from "@/services/enhancedWebSocketService";
 
@@ -63,9 +64,15 @@ const Trading = () => {
       {/* Trading Chart - Full Width */}
       <TradingChart symbol={selectedSymbol} />
 
+      {/* Advanced Trading Features */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        <AdvancedOrderForm symbol={selectedSymbol} currentPrice={45234} />
+        <SmartExecution />
+      </div>
+
       {/* Trading Interface Grid */}
       <div className="grid gap-6 lg:grid-cols-4">
-        {/* Order Form */}
+        {/* Basic Order Form */}
         <div className="lg:col-span-1">
           <OrderForm selectedSymbol={selectedSymbol} currentPrice={45234} />
         </div>
@@ -75,7 +82,7 @@ const Trading = () => {
           <RealTimeOrderBook symbol={selectedSymbol} />
         </div>
 
-        {/* Position Tracker - Now uses real portfolio data */}
+        {/* Position Tracker */}
         <div className="lg:col-span-1">
           <PositionTracker />
         </div>

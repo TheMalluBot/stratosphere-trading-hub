@@ -1,8 +1,9 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from "recharts";
-import { TrendingUp, BarChart3, Wifi, WifiOff } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, CandlestickChart } from "recharts";
+import { TrendingUp, BarChart3, Wifi, WifiOff, Settings, Maximize2 } from "lucide-react";
 import { useRealTimePrice } from "@/hooks/useRealTimePrice";
 import { useState, useEffect } from "react";
 
@@ -10,79 +11,146 @@ interface TradingChartProps {
   symbol?: string;
 }
 
+interface ChartDataPoint {
+  time: string;
+  timestamp: number;
+  price: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+  ma20: number;
+  ma50: number;
+  rsi: number;
+  macd: number;
+  signal: number;
+}
+
 const TradingChart = ({ symbol = "BTCUSDT" }: TradingChartProps) => {
   const { priceData, isConnected } = useRealTimePrice(symbol);
-  const [chartData, setChartData] = useState<any[]>([]);
+  const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
+  const [chartType, setChartType] = useState<'line' | 'area' | 'candlestick'>('area');
+  const [showIndicators, setShowIndicators] = useState(true);
 
-  // Generate more realistic price data with technical indicators
+  // Calculate technical indicators
+  const calculateSMA = (data: number[], period: number): number => {
+    if (data.length < period) return data[data.length - 1] || 0;
+    const sum = data.slice(-period).reduce((a, b) => a + b, 0);
+    return sum / period;
+  };
+
+  const calculateRSI = (prices: number[], period: number = 14): number => {
+    if (prices.length < period + 1) return 50;
+    
+    let gains = 0, losses = 0;
+    for (let i = prices.length - period; i < prices.length; i++) {
+      const change = prices[i] - prices[i - 1];
+      if (change > 0) gains += change;
+      else losses -= change;
+    }
+    
+    const avgGain = gains / period;
+    const avgLoss = losses / period;
+    const rs = avgGain / avgLoss;
+    return 100 - (100 / (1 + rs));
+  };
+
+  // Generate realistic OHLCV data with technical indicators
   useEffect(() => {
-    const generateRealisticData = () => {
-      const data = [];
-      let price = 45000;
+    const generateAdvancedData = () => {
+      const data: ChartDataPoint[] = [];
+      let basePrice = 45000;
       const now = Date.now();
+      const prices: number[] = [];
       
       for (let i = 200; i >= 0; i--) {
-        const time = new Date(now - i * 60000); // 1-minute intervals
+        const time = new Date(now - i * 60000);
         
-        // Add some trend and volatility
-        const trend = Math.sin(i / 50) * 100;
+        // Generate OHLC data
         const volatility = (Math.random() - 0.5) * 300;
-        price += trend + volatility;
+        const trend = Math.sin(i / 50) * 100;
+        basePrice += trend + volatility;
         
-        // Calculate moving averages
-        const ma20 = price + (Math.random() - 0.5) * 50;
-        const ma50 = price + (Math.random() - 0.5) * 100;
+        const open = i === 200 ? basePrice : data[data.length - 1]?.close || basePrice;
+        const priceRange = basePrice * 0.02;
+        const high = basePrice + Math.random() * priceRange;
+        const low = basePrice - Math.random() * priceRange;
+        const close = low + Math.random() * (high - low);
+        
+        prices.push(close);
+        
+        // Calculate technical indicators
+        const ma20 = calculateSMA(prices, 20);
+        const ma50 = calculateSMA(prices, 50);
+        const rsi = calculateRSI(prices);
+        
+        // Simple MACD calculation
+        const ema12 = calculateSMA(prices, 12);
+        const ema26 = calculateSMA(prices, 26);
+        const macd = ema12 - ema26;
+        const signal = calculateSMA(prices.slice(-9).map(() => macd), 9);
         
         data.push({
           time: time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           timestamp: time.getTime(),
-          price: Number(price.toFixed(2)),
+          price: Number(close.toFixed(2)),
+          open: Number(open.toFixed(2)),
+          high: Number(high.toFixed(2)),
+          low: Number(low.toFixed(2)),
+          close: Number(close.toFixed(2)),
           volume: Math.random() * 200 + 50,
           ma20: Number(ma20.toFixed(2)),
           ma50: Number(ma50.toFixed(2)),
-          high: Number((price + Math.random() * 100).toFixed(2)),
-          low: Number((price - Math.random() * 100).toFixed(2))
+          rsi: Number(rsi.toFixed(2)),
+          macd: Number(macd.toFixed(4)),
+          signal: Number(signal.toFixed(4))
         });
       }
       
       return data;
     };
 
-    const initialData = generateRealisticData();
+    const initialData = generateAdvancedData();
     setChartData(initialData);
 
-    // Update data periodically
+    // Update data with real-time prices
     const interval = setInterval(() => {
       setChartData(prev => {
         const newData = [...prev];
         const lastPoint = newData[newData.length - 1];
-        const newPrice = lastPoint.price + (Math.random() - 0.5) * 100;
+        const currentPrice = priceData?.price || lastPoint.close;
+        const priceChange = (Math.random() - 0.5) * 100;
+        const newPrice = currentPrice + priceChange;
         
-        // Add new point and remove oldest
-        newData.push({
+        const newPoint: ChartDataPoint = {
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           timestamp: Date.now(),
           price: Number(newPrice.toFixed(2)),
+          open: lastPoint.close,
+          high: Number((newPrice + Math.random() * 50).toFixed(2)),
+          low: Number((newPrice - Math.random() * 50).toFixed(2)),
+          close: Number(newPrice.toFixed(2)),
           volume: Math.random() * 200 + 50,
           ma20: Number((newPrice + (Math.random() - 0.5) * 50).toFixed(2)),
           ma50: Number((newPrice + (Math.random() - 0.5) * 100).toFixed(2)),
-          high: Number((newPrice + Math.random() * 100).toFixed(2)),
-          low: Number((newPrice - Math.random() * 100).toFixed(2))
-        });
+          rsi: Number((50 + (Math.random() - 0.5) * 40).toFixed(2)),
+          macd: Number(((Math.random() - 0.5) * 10).toFixed(4)),
+          signal: Number(((Math.random() - 0.5) * 8).toFixed(4))
+        };
         
-        if (newData.length > 200) {
-          newData.shift();
-        }
+        newData.push(newPoint);
+        if (newData.length > 200) newData.shift();
         
         return newData;
       });
-    }, 5000);
+    }, 3000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [priceData]);
 
-  const currentPrice = priceData?.price || (chartData.length > 0 ? chartData[chartData.length - 1].price : 0);
-  const previousPrice = chartData.length > 1 ? chartData[chartData.length - 2].price : currentPrice;
+  const currentPrice = chartData.length > 0 ? chartData[chartData.length - 1].close : 0;
+  const previousPrice = chartData.length > 1 ? chartData[chartData.length - 2].close : currentPrice;
   const priceChange = currentPrice - previousPrice;
   const priceChangePercent = previousPrice > 0 ? (priceChange / previousPrice) * 100 : 0;
 
@@ -108,17 +176,40 @@ const TradingChart = ({ symbol = "BTCUSDT" }: TradingChartProps) => {
               </div>
             </CardTitle>
             <CardDescription>
-              Real-time price chart with technical indicators
+              Professional trading chart with technical analysis
             </CardDescription>
           </div>
-          <div className="text-right">
-            <div className="text-2xl font-bold">{formatPrice(currentPrice)}</div>
-            <div className={`flex items-center gap-1 ${priceChange >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-              <TrendingUp className={`w-4 h-4 ${priceChange < 0 ? 'rotate-180' : ''}`} />
-              <span>
-                {priceChange >= 0 ? '+' : ''}${priceChange.toFixed(2)} 
-                ({priceChangePercent >= 0 ? '+' : ''}{priceChangePercent.toFixed(2)}%)
-              </span>
+          <div className="flex items-center gap-2">
+            <div className="flex gap-1">
+              {(['line', 'area', 'candlestick'] as const).map((type) => (
+                <Button
+                  key={type}
+                  variant={chartType === type ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setChartType(type)}
+                  className="px-3"
+                >
+                  {type}
+                </Button>
+              ))}
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowIndicators(!showIndicators)}
+            >
+              <Settings className="w-4 h-4 mr-1" />
+              Indicators
+            </Button>
+            <div className="text-right">
+              <div className="text-2xl font-bold">{formatPrice(currentPrice)}</div>
+              <div className={`flex items-center gap-1 ${priceChange >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                <TrendingUp className={`w-4 h-4 ${priceChange < 0 ? 'rotate-180' : ''}`} />
+                <span>
+                  {priceChange >= 0 ? '+' : ''}${priceChange.toFixed(2)} 
+                  ({priceChangePercent >= 0 ? '+' : ''}{priceChangePercent.toFixed(2)}%)
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -151,9 +242,10 @@ const TradingChart = ({ symbol = "BTCUSDT" }: TradingChartProps) => {
               />
               <Tooltip 
                 formatter={(value: any, name: string) => {
-                  if (name === 'price') return [formatPrice(value), 'Price'];
+                  if (name === 'close' || name === 'price') return [formatPrice(value), 'Price'];
                   if (name === 'ma20') return [formatPrice(value), 'MA20'];
                   if (name === 'ma50') return [formatPrice(value), 'MA50'];
+                  if (name === 'rsi') return [`${value}`, 'RSI'];
                   return [value, name];
                 }}
                 labelStyle={{ color: 'hsl(var(--foreground))' }}
@@ -165,29 +257,33 @@ const TradingChart = ({ symbol = "BTCUSDT" }: TradingChartProps) => {
               />
               <Area 
                 type="monotone" 
-                dataKey="price" 
+                dataKey="close" 
                 stroke={priceChange >= 0 ? '#22c55e' : '#ef4444'}
                 strokeWidth={2}
                 fill="url(#priceGradient)"
                 dot={false}
                 activeDot={{ r: 4 }}
               />
-              <Line 
-                type="monotone" 
-                dataKey="ma20" 
-                stroke="#3b82f6"
-                strokeWidth={1}
-                dot={false}
-                strokeDasharray="2 2"
-              />
-              <Line 
-                type="monotone" 
-                dataKey="ma50" 
-                stroke="#f59e0b"
-                strokeWidth={1}
-                dot={false}
-                strokeDasharray="4 2"
-              />
+              {showIndicators && (
+                <>
+                  <Line 
+                    type="monotone" 
+                    dataKey="ma20" 
+                    stroke="#3b82f6"
+                    strokeWidth={1}
+                    dot={false}
+                    strokeDasharray="2 2"
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="ma50" 
+                    stroke="#f59e0b"
+                    strokeWidth={1}
+                    dot={false}
+                    strokeDasharray="4 2"
+                  />
+                </>
+              )}
             </AreaChart>
           </ResponsiveContainer>
         </div>
@@ -202,12 +298,19 @@ const TradingChart = ({ symbol = "BTCUSDT" }: TradingChartProps) => {
           <Badge variant="outline" className="text-xs">
             Volume: {(chartData.reduce((sum, d) => sum + d.volume, 0) / 1000).toFixed(1)}K
           </Badge>
-          <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-500">
-            MA20: {formatPrice(chartData[chartData.length - 1]?.ma20 || 0)}
-          </Badge>
-          <Badge variant="outline" className="text-xs bg-yellow-500/10 text-yellow-500">
-            MA50: {formatPrice(chartData[chartData.length - 1]?.ma50 || 0)}
-          </Badge>
+          {showIndicators && (
+            <>
+              <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-500">
+                MA20: {formatPrice(chartData[chartData.length - 1]?.ma20 || 0)}
+              </Badge>
+              <Badge variant="outline" className="text-xs bg-yellow-500/10 text-yellow-500">
+                MA50: {formatPrice(chartData[chartData.length - 1]?.ma50 || 0)}
+              </Badge>
+              <Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-500">
+                RSI: {chartData[chartData.length - 1]?.rsi.toFixed(1) || '50.0'}
+              </Badge>
+            </>
+          )}
         </div>
       </CardContent>
     </Card>

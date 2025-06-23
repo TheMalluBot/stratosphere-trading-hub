@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,7 +8,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
-import { TrendingUp, TrendingDown, DollarSign, AlertTriangle } from "lucide-react";
+import { TrendingUp, TrendingDown, DollarSign, AlertTriangle, Wifi, WifiOff } from "lucide-react";
+import { orderManager } from "@/services/orderManager";
 
 interface OrderFormProps {
   selectedSymbol?: string;
@@ -23,12 +23,14 @@ const OrderForm = ({ selectedSymbol = "BTCUSDT", currentPrice = 45000 }: OrderFo
   const [price, setPrice] = useState("");
   const [stopPrice, setStopPrice] = useState("");
   const [balancePercentage, setBalancePercentage] = useState([25]);
+  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   
   // Mock balance for demo
   const availableBalance = 10000;
   const maxQuantity = availableBalance / currentPrice;
+  const connectionStatus = orderManager.getConnectionStatus();
 
-  const handleSubmitOrder = () => {
+  const handleSubmitOrder = async () => {
     if (!quantity || (orderType !== "market" && !price)) {
       toast.error("Please fill in all required fields");
       return;
@@ -36,52 +38,40 @@ const OrderForm = ({ selectedSymbol = "BTCUSDT", currentPrice = 45000 }: OrderFo
 
     const qty = parseFloat(quantity);
     const orderPrice = orderType === "market" ? currentPrice : parseFloat(price);
-    const total = qty * orderPrice;
-
-    if (side === "buy" && total > availableBalance) {
-      toast.error("Insufficient balance for this trade");
-      return;
-    }
 
     if (qty <= 0) {
       toast.error("Quantity must be greater than 0");
       return;
     }
 
-    if (orderType === "limit" && side === "buy" && parseFloat(price) > currentPrice * 1.1) {
-      toast.error("Limit buy price is too high above market price");
-      return;
+    setIsPlacingOrder(true);
+
+    try {
+      const orderData = {
+        symbol: selectedSymbol,
+        side,
+        type: orderType,
+        quantity: qty,
+        price: orderPrice,
+        stopPrice: orderType === "stop" ? parseFloat(stopPrice) : undefined
+      };
+
+      console.log('Placing order:', orderData, connectionStatus.live ? 'LIVE' : 'DEMO');
+      
+      await orderManager.placeOrder(orderData);
+      
+      // Reset form on success
+      setQuantity("");
+      setPrice("");
+      setStopPrice("");
+      setBalancePercentage([25]);
+      
+    } catch (error) {
+      console.error('Order placement failed:', error);
+      // Error toast is handled by orderManager
+    } finally {
+      setIsPlacingOrder(false);
     }
-
-    if (orderType === "limit" && side === "sell" && parseFloat(price) < currentPrice * 0.9) {
-      toast.error("Limit sell price is too low below market price");
-      return;
-    }
-
-    const orderData = {
-      id: Date.now().toString(),
-      symbol: selectedSymbol,
-      side,
-      type: orderType,
-      quantity: qty,
-      price: orderPrice,
-      stopPrice: orderType === "stop" ? parseFloat(stopPrice) : undefined,
-      timestamp: Date.now(),
-      status: "pending"
-    };
-
-    // Store order in localStorage for demo purposes
-    const existingOrders = JSON.parse(localStorage.getItem("trading_orders") || "[]");
-    existingOrders.push(orderData);
-    localStorage.setItem("trading_orders", JSON.stringify(existingOrders));
-
-    toast.success(`${side.toUpperCase()} order placed for ${quantity} ${selectedSymbol}`);
-    
-    // Reset form
-    setQuantity("");
-    setPrice("");
-    setStopPrice("");
-    setBalancePercentage([25]);
   };
 
   const calculateTotal = () => {
@@ -109,9 +99,22 @@ const OrderForm = ({ selectedSymbol = "BTCUSDT", currentPrice = 45000 }: OrderFo
         <CardTitle className="flex items-center gap-2">
           <DollarSign className="w-5 h-5" />
           Place Order
+          <div className="flex items-center gap-1 ml-2">
+            {connectionStatus.live ? (
+              <Wifi className="w-3 h-3 text-green-500" />
+            ) : (
+              <WifiOff className="w-3 h-3 text-yellow-500" />
+            )}
+            <Badge variant={connectionStatus.live ? "default" : "secondary"} className="text-xs">
+              {connectionStatus.live ? 'LIVE' : 'DEMO'}
+            </Badge>
+          </div>
         </CardTitle>
         <CardDescription>
-          Execute trades on {selectedSymbol} at ${currentPrice?.toLocaleString()}
+          {connectionStatus.live 
+            ? `Execute real trades on ${selectedSymbol} at $${currentPrice?.toLocaleString()}`
+            : `Demo trading on ${selectedSymbol} at $${currentPrice?.toLocaleString()}`
+          }
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -265,9 +268,9 @@ const OrderForm = ({ selectedSymbol = "BTCUSDT", currentPrice = 45000 }: OrderFo
             <Button 
               onClick={handleSubmitOrder}
               className={`w-full ${side === "buy" ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"}`}
-              disabled={!quantity || (orderType !== "market" && !price)}
+              disabled={!quantity || (orderType !== "market" && !price) || isPlacingOrder}
             >
-              Place {side.toUpperCase()} Order
+              {isPlacingOrder ? "Placing Order..." : `Place ${side.toUpperCase()} Order`}
             </Button>
           </TabsContent>
         </Tabs>

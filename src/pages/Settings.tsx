@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,8 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { Key, Shield, Bell, Palette } from "lucide-react";
-import { ApiKeyManager, ApiKeys } from "@/services/apiKeyManager";
+import { Key, Shield, Bell, Palette, Wifi, WifiOff } from "lucide-react";
+import { SecureApiKeyManager, ApiKeys } from "@/services/secureApiKeyManager";
 
 const Settings = () => {
   const [apiKeys, setApiKeys] = useState<ApiKeys>({
@@ -35,17 +34,28 @@ const Settings = () => {
     coinGecko: false
   });
 
+  const [saving, setSaving] = useState(false);
+
   // Load saved API keys on mount
   useEffect(() => {
-    const savedKeys = ApiKeyManager.getApiKeys();
-    if (savedKeys) {
-      setApiKeys(savedKeys);
-      // Check if keys are present
-      setConnected({
-        mexc: ApiKeyManager.hasValidKeys('mexc'),
-        coinGecko: ApiKeyManager.hasValidKeys('coinGecko')
-      });
-    }
+    const loadApiKeys = async () => {
+      try {
+        const savedKeys = await SecureApiKeyManager.getApiKeys();
+        if (savedKeys) {
+          setApiKeys(savedKeys);
+          // Check if keys are present and valid
+          setConnected({
+            mexc: !!(savedKeys.mexc.apiKey && savedKeys.mexc.secretKey),
+            coinGecko: !!savedKeys.coinGecko.apiKey
+          });
+        }
+      } catch (error) {
+        console.error('Failed to load API keys:', error);
+        toast.error('Failed to load saved settings');
+      }
+    };
+
+    loadApiKeys();
   }, []);
 
   const handleApiKeyChange = (provider: 'mexc' | 'coinGecko', field: string, value: string) => {
@@ -60,37 +70,50 @@ const Settings = () => {
 
   const testConnection = async (provider: 'mexc' | 'coinGecko') => {
     setTesting(prev => ({ ...prev, [provider]: true }));
-    toast.loading(`Testing ${provider} connection...`);
+    toast.loading(`Testing ${provider.toUpperCase()} connection...`);
     
     try {
-      const isConnected = await ApiKeyManager.testConnection(provider);
+      const isConnected = await SecureApiKeyManager.testConnection(provider);
       
       if (isConnected) {
         setConnected(prev => ({ ...prev, [provider]: true }));
-        toast.success(`${provider} connected successfully!`);
+        toast.success(`${provider.toUpperCase()} connected successfully!`);
       } else {
         setConnected(prev => ({ ...prev, [provider]: false }));
-        toast.error(`Failed to connect to ${provider}. Please check your credentials.`);
+        toast.error(`Failed to connect to ${provider.toUpperCase()}. Please check your credentials.`);
       }
     } catch (error) {
       console.error(`${provider} connection test failed:`, error);
       setConnected(prev => ({ ...prev, [provider]: false }));
-      toast.error(`${provider} connection test failed.`);
+      toast.error(`${provider.toUpperCase()} connection test failed.`);
     } finally {
       setTesting(prev => ({ ...prev, [provider]: false }));
     }
   };
 
-  const saveSettings = () => {
+  const saveSettings = async () => {
+    setSaving(true);
     try {
-      ApiKeyManager.saveApiKeys(apiKeys);
+      await SecureApiKeyManager.saveApiKeys(apiKeys);
+      
+      // Update connection status
       setConnected({
-        mexc: ApiKeyManager.hasValidKeys('mexc'),
-        coinGecko: ApiKeyManager.hasValidKeys('coinGecko')
+        mexc: !!(apiKeys.mexc.apiKey && apiKeys.mexc.secretKey),
+        coinGecko: !!apiKeys.coinGecko.apiKey
       });
+      
       toast.success("Settings saved successfully!");
+      
+      // Reload the page to reinitialize services with new keys
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+      
     } catch (error) {
-      toast.error("Failed to save settings");
+      console.error('Failed to save settings:', error);
+      toast.error(`Failed to save settings: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -124,8 +147,16 @@ const Settings = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle className="flex items-center gap-2">
+                    <Shield className="w-5 h-5" />
                     MEXC API
-                    {connected.mexc && <Badge variant="default" className="bg-green-500">Connected</Badge>}
+                    <div className="flex items-center gap-1">
+                      {connected.mexc ? (
+                        <Wifi className="w-4 h-4 text-green-500" />
+                      ) : (
+                        <WifiOff className="w-4 h-4 text-gray-400" />
+                      )}
+                      {connected.mexc && <Badge variant="default" className="bg-green-500">Connected</Badge>}
+                    </div>
                   </CardTitle>
                   <CardDescription>
                     Cryptocurrency trading and market data from MEXC exchange
@@ -134,7 +165,7 @@ const Settings = () => {
                 <Button 
                   variant="outline" 
                   onClick={() => testConnection('mexc')}
-                  disabled={testing.mexc}
+                  disabled={testing.mexc || !apiKeys.mexc.apiKey || !apiKeys.mexc.secretKey}
                 >
                   {testing.mexc ? 'Testing...' : 'Test Connection'}
                 </Button>
@@ -163,9 +194,11 @@ const Settings = () => {
                   />
                 </div>
               </div>
-              <div className="text-sm text-muted-foreground">
-                <p>• API keys are stored locally and encrypted</p>
-                <p>• Required for order execution and portfolio tracking</p>
+              <div className="text-sm text-muted-foreground bg-blue-50 p-3 rounded">
+                <p className="font-medium mb-1">🔒 Enhanced Security:</p>
+                <p>• API keys are encrypted with AES-256-GCM before storage</p>
+                <p>• Keys are validated before saving</p>
+                <p>• Required for real order execution and portfolio tracking</p>
                 <p>• Get your API keys from MEXC exchange settings</p>
               </div>
             </CardContent>
@@ -178,7 +211,14 @@ const Settings = () => {
                 <div>
                   <CardTitle className="flex items-center gap-2">
                     CoinGecko API
-                    {connected.coinGecko && <Badge variant="default" className="bg-green-500">Connected</Badge>}
+                    <div className="flex items-center gap-1">
+                      {connected.coinGecko ? (
+                        <Wifi className="w-4 h-4 text-green-500" />
+                      ) : (
+                        <WifiOff className="w-4 h-4 text-gray-400" />
+                      )}
+                      {connected.coinGecko && <Badge variant="default" className="bg-green-500">Connected</Badge>}
+                    </div>
                   </CardTitle>
                   <CardDescription>
                     Comprehensive cryptocurrency market data and analytics
@@ -213,8 +253,8 @@ const Settings = () => {
           </Card>
 
           <div className="flex justify-end">
-            <Button onClick={saveSettings}>
-              Save API Settings
+            <Button onClick={saveSettings} disabled={saving}>
+              {saving ? 'Saving...' : 'Save API Settings'}
             </Button>
           </div>
         </TabsContent>

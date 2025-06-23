@@ -5,6 +5,7 @@ import PositionTracker from "@/components/trading/PositionTracker";
 import TradingChart from "@/components/trading/TradingChart";
 import LivePriceDisplay from "@/components/trading/LivePriceDisplay";
 import RealTimeOrderBook from "@/components/trading/RealTimeOrderBook";
+import TradingHistory from "@/components/trading/TradingHistory";
 
 const Trading = () => {
   const selectedSymbol = "BTCUSDT";
@@ -30,7 +31,7 @@ const Trading = () => {
       <TradingChart symbol={selectedSymbol} />
 
       {/* Trading Interface Grid */}
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid gap-6 lg:grid-cols-4">
         {/* Order Form */}
         <div className="lg:col-span-1">
           <OrderForm selectedSymbol={selectedSymbol} currentPrice={45234} />
@@ -44,6 +45,11 @@ const Trading = () => {
         {/* Position Tracker */}
         <div className="lg:col-span-1">
           <PositionTracker />
+        </div>
+
+        {/* Trading History */}
+        <div className="lg:col-span-1">
+          <TradingHistory />
         </div>
       </div>
     </div>

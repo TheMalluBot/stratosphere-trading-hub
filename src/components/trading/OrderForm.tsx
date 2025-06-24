@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,11 +24,20 @@ const OrderForm = ({ selectedSymbol = "BTCUSDT", currentPrice = 45000 }: OrderFo
   const [stopPrice, setStopPrice] = useState("");
   const [balancePercentage, setBalancePercentage] = useState([25]);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState({ live: false, configured: false });
   
   // Mock balance for demo
   const availableBalance = 10000;
   const maxQuantity = availableBalance / currentPrice;
-  const connectionStatus = orderManager.getConnectionStatus();
+
+  useEffect(() => {
+    const getStatus = async () => {
+      const status = await orderManager.getConnectionStatus();
+      setConnectionStatus(status);
+    };
+    
+    getStatus();
+  }, []);
 
   const handleSubmitOrder = async () => {
     if (!quantity || (orderType !== "market" && !price)) {

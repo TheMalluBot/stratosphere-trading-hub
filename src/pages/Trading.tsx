@@ -1,4 +1,5 @@
-import { useEffect } from "react";
+
+import { useEffect, useState } from "react";
 import { TrendingUp, BarChart3, DollarSign, Activity } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import OrderForm from "@/components/trading/OrderForm";
@@ -14,11 +15,19 @@ import { enhancedWsService } from "@/services/enhancedWebSocketService";
 
 const Trading = () => {
   const selectedSymbol = "BTCUSDT";
-  const connectionStatus = orderManager.getConnectionStatus();
+  const [connectionStatus, setConnectionStatus] = useState({ live: false, configured: false });
 
   useEffect(() => {
     // Initialize enhanced WebSocket connection
     enhancedWsService.connect();
+    
+    // Get connection status
+    const getStatus = async () => {
+      const status = await orderManager.getConnectionStatus();
+      setConnectionStatus(status);
+    };
+    
+    getStatus();
     
     return () => {
       // Cleanup not needed as service is global

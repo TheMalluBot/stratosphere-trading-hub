@@ -1,4 +1,3 @@
-
 import { MexcPrivateService, OrderRequest, MexcOrder } from './mexcPrivateService';
 import { toast } from 'sonner';
 
@@ -25,11 +24,21 @@ export interface OrderValidation {
 export class OrderManager {
   private mexcService: MexcPrivateService | null = null;
   private orders: Map<string, Order> = new Map();
-  private isDemo: boolean = false;
+  private isDemo: boolean = true; // Default to demo mode
+  private initializationPromise: Promise<void>;
 
   constructor() {
+    // Initialize asynchronously
+    this.initializationPromise = this.initialize();
+    
+    // Load existing orders from localStorage
+    this.loadOrdersFromStorage();
+  }
+
+  private async initialize(): Promise<void> {
     try {
-      if (MexcPrivateService.isConfigured()) {
+      const isConfigured = await MexcPrivateService.isConfigured();
+      if (isConfigured) {
         this.mexcService = new MexcPrivateService();
         this.isDemo = false;
         console.log('OrderManager: Using live MEXC trading');
@@ -41,9 +50,10 @@ export class OrderManager {
       console.error('OrderManager initialization error:', error);
       this.isDemo = true;
     }
+  }
 
-    // Load existing orders from localStorage
-    this.loadOrdersFromStorage();
+  private async ensureInitialized(): Promise<void> {
+    await this.initializationPromise;
   }
 
   private loadOrdersFromStorage(): void {
@@ -115,6 +125,8 @@ export class OrderManager {
   }
 
   async placeOrder(orderData: Partial<Order>): Promise<Order> {
+    await this.ensureInitialized();
+    
     const orderId = Date.now().toString();
     
     const order: Order = {
@@ -181,6 +193,8 @@ export class OrderManager {
   }
 
   async cancelOrder(orderId: string): Promise<void> {
+    await this.ensureInitialized();
+    
     const order = this.orders.get(orderId);
     if (!order) {
       throw new Error('Order not found');
@@ -209,6 +223,8 @@ export class OrderManager {
   }
 
   async refreshOrderStatus(orderId: string): Promise<Order> {
+    await this.ensureInitialized();
+    
     const order = this.orders.get(orderId);
     if (!order) {
       throw new Error('Order not found');
@@ -251,10 +267,12 @@ export class OrderManager {
     return !this.isDemo;
   }
 
-  getConnectionStatus(): { live: boolean; configured: boolean } {
+  async getConnectionStatus(): Promise<{ live: boolean; configured: boolean }> {
+    await this.ensureInitialized();
+    const configured = await MexcPrivateService.isConfigured();
     return {
       live: !this.isDemo,
-      configured: MexcPrivateService.isConfigured()
+      configured
     };
   }
 }

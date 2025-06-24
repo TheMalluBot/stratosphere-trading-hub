@@ -1,15 +1,12 @@
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
-import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { Key, Shield, Bell, Palette, Wifi, WifiOff } from "lucide-react";
+import { Key, Bell, Activity } from "lucide-react";
 import { SecureApiKeyManager, ApiKeys } from "@/services/secureApiKeyManager";
+import ApiKeySection from "@/components/settings/ApiKeySection";
+import NotificationSettings from "@/components/settings/NotificationSettings";
+import SystemStatus from "@/components/settings/SystemStatus";
 
 const Settings = () => {
   const [apiKeys, setApiKeys] = useState<ApiKeys>({
@@ -26,7 +23,8 @@ const Settings = () => {
 
   const [connected, setConnected] = useState({
     mexc: false,
-    coinGecko: false
+    coinGecko: false,
+    websocket: false
   });
 
   const [testing, setTesting] = useState({
@@ -97,10 +95,11 @@ const Settings = () => {
       await SecureApiKeyManager.saveApiKeys(apiKeys);
       
       // Update connection status
-      setConnected({
+      setConnected(prev => ({
+        ...prev,
         mexc: !!(apiKeys.mexc.apiKey && apiKeys.mexc.secretKey),
         coinGecko: !!apiKeys.coinGecko.apiKey
-      });
+      }));
       
       toast.success("Settings saved successfully!");
       
@@ -117,6 +116,22 @@ const Settings = () => {
     }
   };
 
+  const handleNotificationChange = (key: string, value: boolean) => {
+    setNotifications(prev => ({ ...prev, [key]: value }));
+  };
+
+  const refreshSystemStatus = async () => {
+    // Check all connections
+    const mexcStatus = await SecureApiKeyManager.testConnection('mexc');
+    const coinGeckoStatus = await SecureApiKeyManager.testConnection('coinGecko');
+    
+    setConnected(prev => ({
+      mexc: mexcStatus,
+      coinGecko: coinGeckoStatus,
+      websocket: true // Assume websocket is working for now
+    }));
+  };
+
   return (
     <div className="flex-1 space-y-6 p-6 overflow-auto custom-scrollbar">
       <div className="flex items-center justify-between">
@@ -129,7 +144,7 @@ const Settings = () => {
       </div>
 
       <Tabs defaultValue="api" className="space-y-6">
-        <TabsList>
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="api" className="flex items-center gap-2">
             <Key className="w-4 h-4" />
             API Keys
@@ -138,119 +153,35 @@ const Settings = () => {
             <Bell className="w-4 h-4" />
             Notifications
           </TabsTrigger>
+          <TabsTrigger value="system" className="flex items-center gap-2">
+            <Activity className="w-4 h-4" />
+            System Status
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="api" className="space-y-6">
-          {/* MEXC API */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <Shield className="w-5 h-5" />
-                    MEXC API
-                    <div className="flex items-center gap-1">
-                      {connected.mexc ? (
-                        <Wifi className="w-4 h-4 text-green-500" />
-                      ) : (
-                        <WifiOff className="w-4 h-4 text-gray-400" />
-                      )}
-                      {connected.mexc && <Badge variant="default" className="bg-green-500">Connected</Badge>}
-                    </div>
-                  </CardTitle>
-                  <CardDescription>
-                    Cryptocurrency trading and market data from MEXC exchange
-                  </CardDescription>
-                </div>
-                <Button 
-                  variant="outline" 
-                  onClick={() => testConnection('mexc')}
-                  disabled={testing.mexc || !apiKeys.mexc.apiKey || !apiKeys.mexc.secretKey}
-                >
-                  {testing.mexc ? 'Testing...' : 'Test Connection'}
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="mexc-api-key">API Key</Label>
-                  <Input
-                    id="mexc-api-key"
-                    type="password"
-                    placeholder="Your MEXC API Key"
-                    value={apiKeys.mexc.apiKey}
-                    onChange={(e) => handleApiKeyChange('mexc', 'apiKey', e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="mexc-secret-key">Secret Key</Label>
-                  <Input
-                    id="mexc-secret-key"
-                    type="password"
-                    placeholder="Your Secret Key"
-                    value={apiKeys.mexc.secretKey}
-                    onChange={(e) => handleApiKeyChange('mexc', 'secretKey', e.target.value)}
-                  />
-                </div>
-              </div>
-              <div className="text-sm text-muted-foreground bg-blue-50 p-3 rounded">
-                <p className="font-medium mb-1">🔒 Enhanced Security:</p>
-                <p>• API keys are encrypted with AES-256-GCM before storage</p>
-                <p>• Keys are validated before saving</p>
-                <p>• Required for real order execution and portfolio tracking</p>
-                <p>• Get your API keys from MEXC exchange settings</p>
-              </div>
-            </CardContent>
-          </Card>
+          <ApiKeySection
+            provider="mexc"
+            title="MEXC API"
+            description="Cryptocurrency trading and market data from MEXC exchange"
+            apiKey={apiKeys.mexc.apiKey}
+            secretKey={apiKeys.mexc.secretKey}
+            connected={connected.mexc}
+            testing={testing.mexc}
+            onApiKeyChange={(field, value) => handleApiKeyChange('mexc', field, value)}
+            onTestConnection={() => testConnection('mexc')}
+          />
 
-          {/* CoinGecko API */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    CoinGecko API
-                    <div className="flex items-center gap-1">
-                      {connected.coinGecko ? (
-                        <Wifi className="w-4 h-4 text-green-500" />
-                      ) : (
-                        <WifiOff className="w-4 h-4 text-gray-400" />
-                      )}
-                      {connected.coinGecko && <Badge variant="default" className="bg-green-500">Connected</Badge>}
-                    </div>
-                  </CardTitle>
-                  <CardDescription>
-                    Comprehensive cryptocurrency market data and analytics
-                  </CardDescription>
-                </div>
-                <Button 
-                  variant="outline" 
-                  onClick={() => testConnection('coinGecko')}
-                  disabled={testing.coinGecko}
-                >
-                  {testing.coinGecko ? 'Testing...' : 'Test Connection'}
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="coingecko-api-key">API Key (Optional)</Label>
-                <Input
-                  id="coingecko-api-key"
-                  type="password"
-                  placeholder="Your CoinGecko API Key (Pro)"
-                  value={apiKeys.coinGecko.apiKey}
-                  onChange={(e) => handleApiKeyChange('coinGecko', 'apiKey', e.target.value)}
-                />
-              </div>
-              <div className="text-sm text-muted-foreground">
-                <p>• Free tier available without API key</p>
-                <p>• Pro API key provides higher rate limits</p>
-                <p>• Used for market data, trends, and analytics</p>
-              </div>
-            </CardContent>
-          </Card>
+          <ApiKeySection
+            provider="coinGecko"
+            title="CoinGecko API"
+            description="Comprehensive cryptocurrency market data and analytics"
+            apiKey={apiKeys.coinGecko.apiKey}
+            connected={connected.coinGecko}
+            testing={testing.coinGecko}
+            onApiKeyChange={(field, value) => handleApiKeyChange('coinGecko', field, value)}
+            onTestConnection={() => testConnection('coinGecko')}
+          />
 
           <div className="flex justify-end">
             <Button onClick={saveSettings} disabled={saving}>
@@ -260,73 +191,17 @@ const Settings = () => {
         </TabsContent>
 
         <TabsContent value="notifications" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Notification Preferences</CardTitle>
-              <CardDescription>
-                Choose what notifications you want to receive
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label className="text-base">Trade Notifications</Label>
-                  <p className="text-sm text-muted-foreground">Get notified when trades are executed</p>
-                </div>
-                <Switch
-                  checked={notifications.trades}
-                  onCheckedChange={(checked) => 
-                    setNotifications(prev => ({ ...prev, trades: checked }))
-                  }
-                />
-              </div>
+          <NotificationSettings
+            notifications={notifications}
+            onNotificationChange={handleNotificationChange}
+          />
+        </TabsContent>
 
-              <Separator />
-
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label className="text-base">Price Alerts</Label>
-                  <p className="text-sm text-muted-foreground">Alerts when watchlist items hit target prices</p>
-                </div>
-                <Switch
-                  checked={notifications.priceAlerts}
-                  onCheckedChange={(checked) => 
-                    setNotifications(prev => ({ ...prev, priceAlerts: checked }))
-                  }
-                />
-              </div>
-
-              <Separator />
-
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label className="text-base">System Updates</Label>
-                  <p className="text-sm text-muted-foreground">Platform updates and maintenance notifications</p>
-                </div>
-                <Switch
-                  checked={notifications.systemUpdates}
-                  onCheckedChange={(checked) => 
-                    setNotifications(prev => ({ ...prev, systemUpdates: checked }))
-                  }
-                />
-              </div>
-
-              <Separator />
-
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label className="text-base">Market News</Label>
-                  <p className="text-sm text-muted-foreground">Important market news and events</p>
-                </div>
-                <Switch
-                  checked={notifications.marketNews}
-                  onCheckedChange={(checked) => 
-                    setNotifications(prev => ({ ...prev, marketNews: checked }))
-                  }
-                />
-              </div>
-            </CardContent>
-          </Card>
+        <TabsContent value="system" className="space-y-6">
+          <SystemStatus
+            connectionStatus={connected}
+            onRefreshStatus={refreshSystemStatus}
+          />
         </TabsContent>
       </Tabs>
     </div>

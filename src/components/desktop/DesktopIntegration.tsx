@@ -1,32 +1,48 @@
 
 import { useEffect } from 'react';
 import { useDesktopIntegration } from '@/hooks/useDesktopIntegration';
-import { optimizationManager } from '@/lib/performance/OptimizationManager';
+import { highPerformanceManager } from '@/lib/performance/HighPerformanceManager';
 
 export function DesktopIntegration() {
   const { showNotification } = useDesktopIntegration();
 
   useEffect(() => {
-    console.log('🌐 AlgoTrade Pro - Web Application Mode');
-    showNotification(
-      'AlgoTrade Pro', 
-      'Trading platform loaded successfully!'
-    );
+    console.log('🌐 AlgoTrade Pro - Advanced Security & Performance Mode');
     
-    // Initialize performance optimizations for web
-    optimizationManager.optimizeRendering();
-    
-    // Enable hardware acceleration for better performance
-    const appElement = document.getElementById('root');
-    if (appElement) {
-      optimizationManager.enableGPUAcceleration(appElement);
-    }
+    const initializeAdvancedSystems = async () => {
+      try {
+        // Initialize high-performance manager with security systems
+        await highPerformanceManager.initialize();
+        
+        showNotification(
+          'AlgoTrade Pro', 
+          '🔒 Secure trading platform loaded with advanced protection!'
+        );
+        
+        // Monitor performance
+        const handlePerformanceUpdate = (event: CustomEvent) => {
+          const metrics = event.detail;
+          console.log('📊 Performance metrics:', metrics);
+        };
+        
+        window.addEventListener('performanceUpdate', handlePerformanceUpdate as EventListener);
+        
+        return () => {
+          window.removeEventListener('performanceUpdate', handlePerformanceUpdate as EventListener);
+        };
+      } catch (error) {
+        console.error('❌ Failed to initialize advanced systems:', error);
+        showNotification(
+          'AlgoTrade Pro', 
+          '⚠️ Some advanced features may not be available'
+        );
+      }
+    };
 
-    // Web Workers for background processing
-    optimizationManager.initializeWebWorkers();
+    initializeAdvancedSystems();
 
     return () => {
-      optimizationManager.cleanup();
+      highPerformanceManager.cleanup();
     };
   }, [showNotification]);
 

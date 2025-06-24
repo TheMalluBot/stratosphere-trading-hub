@@ -1,3 +1,4 @@
+
 import { ApiKeyManager } from './apiKeyManager';
 
 export interface AccountInfo {
@@ -36,16 +37,33 @@ export interface MexcOrder {
 
 export class MexcPrivateService {
   private baseUrl = 'https://api.mexc.com/api/v3';
-  private apiKey: string;
-  private secretKey: string;
+  private apiKey: string = '';
+  private secretKey: string = '';
+  private initialized = false;
 
   constructor() {
-    const keys = ApiKeyManager.getApiKeys();
+    // Initialize asynchronously
+    this.initialize();
+  }
+
+  private async initialize() {
+    const keys = await ApiKeyManager.getApiKeys();
     if (!keys?.mexc.apiKey || !keys?.mexc.secretKey) {
-      throw new Error('MEXC API keys not found. Please configure them in Settings.');
+      console.warn('MEXC API keys not found. Please configure them in Settings.');
+      return;
     }
     this.apiKey = keys.mexc.apiKey;
     this.secretKey = keys.mexc.secretKey;
+    this.initialized = true;
+  }
+
+  private async ensureInitialized() {
+    if (!this.initialized) {
+      await this.initialize();
+    }
+    if (!this.apiKey || !this.secretKey) {
+      throw new Error('MEXC API keys not found. Please configure them in Settings.');
+    }
   }
 
   private async createSignature(params: Record<string, any>): Promise<string> {
@@ -81,6 +99,8 @@ export class MexcPrivateService {
     method: 'GET' | 'POST' | 'DELETE' = 'GET', 
     params: Record<string, any> = {}
   ): Promise<any> {
+    await this.ensureInitialized();
+    
     const timestamp = Date.now();
     const requestParams = { ...params, timestamp };
     
@@ -177,8 +197,8 @@ export class MexcPrivateService {
     });
   }
 
-  static isConfigured(): boolean {
-    const keys = ApiKeyManager.getApiKeys();
+  static async isConfigured(): Promise<boolean> {
+    const keys = await ApiKeyManager.getApiKeys();
     return !!(keys?.mexc.apiKey && keys?.mexc.secretKey);
   }
 }

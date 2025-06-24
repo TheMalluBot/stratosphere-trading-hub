@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "next-themes";
 import { SidebarProvider } from "@/components/ui/sidebar";
+import { SignedIn, SignedOut } from "@clerk/clerk-react";
 import { TradingLayout } from "@/components/layout/TradingLayout";
 import { DesktopIntegration } from "@/components/desktop/DesktopIntegration";
 
@@ -25,6 +26,7 @@ import NotFound from "@/pages/NotFound";
 import Index from "@/pages/Index";
 import TradingView from "@/pages/TradingView";
 import AlgoTrading from "@/pages/AlgoTrading";
+import Auth from "@/pages/Auth";
 
 const queryClient = new QueryClient();
 
@@ -37,7 +39,17 @@ function App() {
             <div className="flex h-screen bg-background">
               <DesktopIntegration />
               <Routes>
-                <Route path="/" element={<TradingLayout />}>
+                <Route path="/auth" element={<Auth />} />
+                <Route path="/" element={
+                  <>
+                    <SignedOut>
+                      <Auth />
+                    </SignedOut>
+                    <SignedIn>
+                      <TradingLayout />
+                    </SignedIn>
+                  </>
+                }>
                   <Route index element={<Index />} />
                   <Route path="dashboard" element={<Dashboard />} />
                   <Route path="tradingview" element={<TradingView />} />

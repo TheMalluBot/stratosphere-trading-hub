@@ -32,6 +32,8 @@ const TradingChart = ({ symbol = "BTCUSDT" }: TradingChartProps) => {
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
   const [chartType, setChartType] = useState<'line' | 'area'>('area');
   const [showIndicators, setShowIndicators] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // Calculate technical indicators
   const calculateSMA = (data: number[], period: number): number => {
@@ -52,6 +54,7 @@ const TradingChart = ({ symbol = "BTCUSDT" }: TradingChartProps) => {
     
     const avgGain = gains / period;
     const avgLoss = losses / period;
+    if (avgLoss === 0) return 100;
     const rs = avgGain / avgLoss;
     return 100 - (100 / (1 + rs));
   };
@@ -59,95 +62,111 @@ const TradingChart = ({ symbol = "BTCUSDT" }: TradingChartProps) => {
   // Generate realistic OHLCV data with technical indicators
   useEffect(() => {
     const generateAdvancedData = () => {
-      const data: ChartDataPoint[] = [];
-      let basePrice = 45000;
-      const now = Date.now();
-      const prices: number[] = [];
-      
-      for (let i = 200; i >= 0; i--) {
-        const time = new Date(now - i * 60000);
+      try {
+        setIsLoading(true);
+        setError(null);
         
-        // Generate OHLC data
-        const volatility = (Math.random() - 0.5) * 300;
-        const trend = Math.sin(i / 50) * 100;
-        basePrice += trend + volatility;
+        const data: ChartDataPoint[] = [];
+        let basePrice = priceData?.price || 45000;
+        const now = Date.now();
+        const prices: number[] = [];
         
-        const open = i === 200 ? basePrice : data[data.length - 1]?.close || basePrice;
-        const priceRange = basePrice * 0.02;
-        const high = basePrice + Math.random() * priceRange;
-        const low = basePrice - Math.random() * priceRange;
-        const close = low + Math.random() * (high - low);
+        for (let i = 200; i >= 0; i--) {
+          const time = new Date(now - i * 60000);
+          
+          // Generate OHLC data with more realistic price movements
+          const volatility = (Math.random() - 0.5) * (basePrice * 0.02);
+          const trend = Math.sin(i / 50) * (basePrice * 0.01);
+          basePrice = Math.max(basePrice + trend + volatility, basePrice * 0.8);
+          
+          const open = i === 200 ? basePrice : data[data.length - 1]?.close || basePrice;
+          const priceRange = basePrice * 0.015;
+          const high = basePrice + Math.random() * priceRange;
+          const low = Math.max(basePrice - Math.random() * priceRange, basePrice * 0.95);
+          const close = low + Math.random() * (high - low);
+          
+          prices.push(close);
+          
+          // Calculate technical indicators with error handling
+          const ma20 = calculateSMA(prices, Math.min(20, prices.length));
+          const ma50 = calculateSMA(prices, Math.min(50, prices.length));
+          const rsi = calculateRSI(prices);
+          
+          // Simple MACD calculation
+          const ema12 = calculateSMA(prices, Math.min(12, prices.length));
+          const ema26 = calculateSMA(prices, Math.min(26, prices.length));
+          const macd = ema12 - ema26;
+          const signal = calculateSMA(prices.slice(-9).map(() => macd), Math.min(9, prices.length));
+          
+          data.push({
+            time: time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            timestamp: time.getTime(),
+            price: Number(close.toFixed(2)),
+            open: Number(open.toFixed(2)),
+            high: Number(high.toFixed(2)),
+            low: Number(low.toFixed(2)),
+            close: Number(close.toFixed(2)),
+            volume: Math.random() * 200 + 50,
+            ma20: Number(ma20.toFixed(2)),
+            ma50: Number(ma50.toFixed(2)),
+            rsi: Number(rsi.toFixed(2)),
+            macd: Number(macd.toFixed(4)),
+            signal: Number(signal.toFixed(4))
+          });
+        }
         
-        prices.push(close);
-        
-        // Calculate technical indicators
-        const ma20 = calculateSMA(prices, 20);
-        const ma50 = calculateSMA(prices, 50);
-        const rsi = calculateRSI(prices);
-        
-        // Simple MACD calculation
-        const ema12 = calculateSMA(prices, 12);
-        const ema26 = calculateSMA(prices, 26);
-        const macd = ema12 - ema26;
-        const signal = calculateSMA(prices.slice(-9).map(() => macd), 9);
-        
-        data.push({
-          time: time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          timestamp: time.getTime(),
-          price: Number(close.toFixed(2)),
-          open: Number(open.toFixed(2)),
-          high: Number(high.toFixed(2)),
-          low: Number(low.toFixed(2)),
-          close: Number(close.toFixed(2)),
-          volume: Math.random() * 200 + 50,
-          ma20: Number(ma20.toFixed(2)),
-          ma50: Number(ma50.toFixed(2)),
-          rsi: Number(rsi.toFixed(2)),
-          macd: Number(macd.toFixed(4)),
-          signal: Number(signal.toFixed(4))
-        });
+        setChartData(data);
+      } catch (err) {
+        console.error('Error generating chart data:', err);
+        setError('Failed to generate chart data');
+      } finally {
+        setIsLoading(false);
       }
-      
-      return data;
     };
 
-    const initialData = generateAdvancedData();
-    setChartData(initialData);
+    generateAdvancedData();
 
     // Update data with real-time prices
     const interval = setInterval(() => {
-      setChartData(prev => {
-        const newData = [...prev];
-        const lastPoint = newData[newData.length - 1];
-        const currentPrice = priceData?.price || lastPoint.close;
-        const priceChange = (Math.random() - 0.5) * 100;
-        const newPrice = currentPrice + priceChange;
-        
-        const newPoint: ChartDataPoint = {
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          timestamp: Date.now(),
-          price: Number(newPrice.toFixed(2)),
-          open: lastPoint.close,
-          high: Number((newPrice + Math.random() * 50).toFixed(2)),
-          low: Number((newPrice - Math.random() * 50).toFixed(2)),
-          close: Number(newPrice.toFixed(2)),
-          volume: Math.random() * 200 + 50,
-          ma20: Number((newPrice + (Math.random() - 0.5) * 50).toFixed(2)),
-          ma50: Number((newPrice + (Math.random() - 0.5) * 100).toFixed(2)),
-          rsi: Number((50 + (Math.random() - 0.5) * 40).toFixed(2)),
-          macd: Number(((Math.random() - 0.5) * 10).toFixed(4)),
-          signal: Number(((Math.random() - 0.5) * 8).toFixed(4))
-        };
-        
-        newData.push(newPoint);
-        if (newData.length > 200) newData.shift();
-        
-        return newData;
-      });
+      if (chartData.length > 0) {
+        setChartData(prev => {
+          try {
+            const newData = [...prev];
+            const lastPoint = newData[newData.length - 1];
+            const currentPrice = priceData?.price || lastPoint.close;
+            const priceChange = (Math.random() - 0.5) * (currentPrice * 0.01);
+            const newPrice = Math.max(currentPrice + priceChange, currentPrice * 0.99);
+            
+            const newPoint: ChartDataPoint = {
+              time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              timestamp: Date.now(),
+              price: Number(newPrice.toFixed(2)),
+              open: lastPoint.close,
+              high: Number((newPrice + Math.random() * (newPrice * 0.01)).toFixed(2)),
+              low: Number((newPrice - Math.random() * (newPrice * 0.01)).toFixed(2)),
+              close: Number(newPrice.toFixed(2)),
+              volume: Math.random() * 200 + 50,
+              ma20: Number((newPrice + (Math.random() - 0.5) * (newPrice * 0.02)).toFixed(2)),
+              ma50: Number((newPrice + (Math.random() - 0.5) * (newPrice * 0.03)).toFixed(2)),
+              rsi: Number((50 + (Math.random() - 0.5) * 40).toFixed(2)),
+              macd: Number(((Math.random() - 0.5) * 10).toFixed(4)),
+              signal: Number(((Math.random() - 0.5) * 8).toFixed(4))
+            };
+            
+            newData.push(newPoint);
+            if (newData.length > 200) newData.shift();
+            
+            return newData;
+          } catch (err) {
+            console.error('Error updating chart data:', err);
+            return prev;
+          }
+        });
+      }
     }, 3000);
 
     return () => clearInterval(interval);
-  }, [priceData]);
+  }, [priceData, symbol]);
 
   const currentPrice = chartData.length > 0 ? chartData[chartData.length - 1].close : 0;
   const previousPrice = chartData.length > 1 ? chartData[chartData.length - 2].close : currentPrice;
@@ -155,6 +174,47 @@ const TradingChart = ({ symbol = "BTCUSDT" }: TradingChartProps) => {
   const priceChangePercent = previousPrice > 0 ? (priceChange / previousPrice) * 100 : 0;
 
   const formatPrice = (value: number) => `$${value.toLocaleString()}`;
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <BarChart3 className="w-5 h-5" />
+            Loading Chart...
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="h-96 flex items-center justify-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <BarChart3 className="w-5 h-5" />
+            Chart Error
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="h-96 flex items-center justify-center">
+            <div className="text-center">
+              <p className="text-red-500 mb-2">{error}</p>
+              <Button onClick={() => window.location.reload()} variant="outline" size="sm">
+                Retry
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card>

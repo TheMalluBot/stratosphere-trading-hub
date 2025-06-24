@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   BarChart3, 
@@ -17,6 +16,7 @@ import {
   Settings,
   Activity
 } from "lucide-react";
+import TradingChart from "@/components/trading/TradingChart";
 
 interface WatchlistItem {
   symbol: string;
@@ -266,47 +266,9 @@ const TradingView = () => {
           </div>
         </div>
 
-        {/* Chart Content */}
+        {/* Chart Content - Now using the actual TradingChart component */}
         <div className="flex-1 p-4">
-          <Card className="h-full">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="w-5 h-5" />
-                {selectedSymbolData?.name} - {timeframe}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="h-full">
-              <div className="chart-container h-full flex items-center justify-center bg-muted/20 rounded-lg">
-                <div className="text-center">
-                  <BarChart3 className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">Advanced Chart Integration</h3>
-                  <p className="text-muted-foreground mb-4">
-                    TradingView-style charting ready for integration
-                  </p>
-                  <div className="text-sm text-muted-foreground">
-                    <p>Features ready for implementation:</p>
-                    <ul className="mt-2 space-y-1">
-                      <li>• Real-time candlestick charts with {timeframe} timeframe</li>
-                      <li>• Technical indicators (RSI, MACD, Bollinger Bands)</li>
-                      <li>• Drawing tools and trend lines</li>
-                      <li>• Volume profile analysis</li>
-                      <li>• Multi-timeframe synchronization</li>
-                      <li>• Symbol: {selectedSymbol} at {formatPrice(currentPrice, selectedSymbolData?.type || 'stock')}</li>
-                    </ul>
-                  </div>
-                  <div className="mt-4 flex gap-2 justify-center">
-                    <Badge variant="outline" className="bg-green-500/10 text-green-400">
-                      <Activity className="w-3 h-3 mr-1" />
-                      Real-time
-                    </Badge>
-                    <Badge variant="outline">
-                      Volume: {selectedSymbolData?.volume}
-                    </Badge>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <TradingChart symbol={selectedSymbol} />
         </div>
       </div>
     </div>

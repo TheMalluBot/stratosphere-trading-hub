@@ -116,6 +116,7 @@ const Charts = () => {
         </TabsList>
 
         <TabsContent value="chart" className="space-y-6">
+          {/* Using the actual TradingChart component */}
           <TradingChart symbol={selectedSymbol} />
           
           <div className="grid gap-6 lg:grid-cols-3">

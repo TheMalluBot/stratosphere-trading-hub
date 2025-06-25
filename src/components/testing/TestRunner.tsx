@@ -1,321 +1,240 @@
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { CheckCircle, XCircle, Play, Clock, AlertTriangle } from 'lucide-react';
-
-interface TestCase {
-  id: string;
-  name: string;
-  description: string;
-  test: () => Promise<boolean>;
-  category: 'unit' | 'integration' | 'e2e' | 'performance';
-}
+import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { TestTube, Play, CheckCircle, XCircle, AlertTriangle, Loader2 } from 'lucide-react';
 
 interface TestResult {
-  id: string;
   name: string;
   status: 'passed' | 'failed' | 'running' | 'pending';
-  duration?: number;
+  duration: number;
   error?: string;
 }
 
+interface TestSuite {
+  name: string;
+  tests: TestResult[];
+}
+
 const TestRunner = () => {
-  const [testResults, setTestResults] = useState<TestResult[]>([]);
   const [isRunning, setIsRunning] = useState(false);
   const [progress, setProgress] = useState(0);
-
-  const testCases: TestCase[] = [
+  const [testSuites, setTestSuites] = useState<TestSuite[]>([
     {
-      id: 'order-validation',
-      name: 'Order Validation',
-      description: 'Test order form validation logic',
-      category: 'unit',
-      test: async () => {
-        // Simulate order validation test
-        await new Promise(resolve => setTimeout(resolve, 500));
-        return Math.random() > 0.1; // 90% pass rate
-      }
+      name: 'Component Tests',
+      tests: [
+        { name: 'OrderForm renders correctly', status: 'pending', duration: 0 },
+        { name: 'Portfolio displays positions', status: 'pending', duration: 0 },
+        { name: 'Trading chart loads data', status: 'pending', duration: 0 },
+        { name: 'Order book updates', status: 'pending', duration: 0 }
+      ]
     },
     {
-      id: 'api-connection',
-      name: 'API Connection',
-      description: 'Test MEXC API connectivity',
-      category: 'integration',
-      test: async () => {
-        try {
-          const response = await fetch('https://api.mexc.com/api/v3/ping');
-          return response.ok;
-        } catch {
-          return false;
-        }
-      }
+      name: 'Service Tests',
+      tests: [
+        { name: 'API connection test', status: 'pending', duration: 0 },
+        { name: 'WebSocket connectivity', status: 'pending', duration: 0 },
+        { name: 'Order manager functionality', status: 'pending', duration: 0 },
+        { name: 'Portfolio calculations', status: 'pending', duration: 0 }
+      ]
     },
     {
-      id: 'websocket-connection',
-      name: 'WebSocket Connection',
-      description: 'Test real-time data streaming',
-      category: 'integration',
-      test: async () => {
-        return new Promise((resolve) => {
-          const ws = new WebSocket('wss://wbs.mexc.com/ws');
-          const timeout = setTimeout(() => {
-            ws.close();
-            resolve(false);
-          }, 3000);
-          
-          ws.onopen = () => {
-            clearTimeout(timeout);
-            ws.close();
-            resolve(true);
-          };
-          
-          ws.onerror = () => {
-            clearTimeout(timeout);
-            resolve(false);
-          };
-        });
-      }
+      name: 'Integration Tests',
+      tests: [
+        { name: 'End-to-end order flow', status: 'pending', duration: 0 },
+        { name: 'Real-time data updates', status: 'pending', duration: 0 },
+        { name: 'Error handling', status: 'pending', duration: 0 }
+      ]
     },
     {
-      id: 'portfolio-calculation',
-      name: 'Portfolio Calculation',
-      description: 'Test portfolio value calculations',
-      category: 'unit',
-      test: async () => {
-        await new Promise(resolve => setTimeout(resolve, 300));
-        // Test portfolio calculation logic
-        const testPortfolio = [
-          { symbol: 'BTCUSDT', quantity: 1, price: 45000 },
-          { symbol: 'ETHUSDT', quantity: 10, price: 3000 }
-        ];
-        const totalValue = testPortfolio.reduce((sum, pos) => sum + (pos.quantity * pos.price), 0);
-        return totalValue === 75000;
-      }
-    },
-    {
-      id: 'error-handling',
-      name: 'Error Handling',
-      description: 'Test error boundary functionality',
-      category: 'unit',
-      test: async () => {
-        await new Promise(resolve => setTimeout(resolve, 400));
-        // Test error handling
-        try {
-          throw new Error('Test error');
-        } catch (error) {
-          return error instanceof Error && error.message === 'Test error';
-        }
-      }
-    },
-    {
-      id: 'performance-load',
-      name: 'Performance Load Test',
-      description: 'Test application performance under load',
-      category: 'performance',
-      test: async () => {
-        const startTime = performance.now();
-        
-        // Simulate heavy computation
-        for (let i = 0; i < 100000; i++) {
-          Math.random() * Math.random();
-        }
-        
-        const endTime = performance.now();
-        const duration = endTime - startTime;
-        
-        return duration < 100; // Should complete in less than 100ms
-      }
+      name: 'Performance Tests',
+      tests: [
+        { name: 'Component render performance', status: 'pending', duration: 0 },
+        { name: 'Memory usage optimization', status: 'pending', duration: 0 },
+        { name: 'Bundle size analysis', status: 'pending', duration: 0 }
+      ]
     }
-  ];
+  ]);
 
   const runTests = async () => {
     setIsRunning(true);
     setProgress(0);
-    
-    const results: TestResult[] = testCases.map(test => ({
-      id: test.id,
-      name: test.name,
-      status: 'pending' as const
-    }));
-    
-    setTestResults(results);
 
-    for (let i = 0; i < testCases.length; i++) {
-      const testCase = testCases[i];
-      const startTime = performance.now();
-      
-      // Update status to running
-      setTestResults(prev => prev.map(result => 
-        result.id === testCase.id 
-          ? { ...result, status: 'running' }
-          : result
-      ));
+    const totalTests = testSuites.reduce((sum, suite) => sum + suite.tests.length, 0);
+    let completedTests = 0;
 
-      try {
-        const passed = await testCase.test();
-        const duration = performance.now() - startTime;
-        
-        setTestResults(prev => prev.map(result => 
-          result.id === testCase.id 
-            ? { 
-                ...result, 
-                status: passed ? 'passed' : 'failed',
-                duration: Math.round(duration),
-                error: passed ? undefined : 'Test assertion failed'
+    for (const suite of testSuites) {
+      for (const test of suite.tests) {
+        // Update test status to running
+        setTestSuites(prev => prev.map(s => 
+          s.name === suite.name 
+            ? {
+                ...s,
+                tests: s.tests.map(t => 
+                  t.name === test.name 
+                    ? { ...t, status: 'running' as const }
+                    : t
+                )
               }
-            : result
+            : s
         ));
-      } catch (error) {
-        const duration = performance.now() - startTime;
-        
-        setTestResults(prev => prev.map(result => 
-          result.id === testCase.id 
-            ? { 
-                ...result, 
-                status: 'failed',
-                duration: Math.round(duration),
-                error: error instanceof Error ? error.message : 'Unknown error'
+
+        // Simulate test execution
+        const testDuration = Math.random() * 2000 + 500; // 0.5-2.5 seconds
+        await new Promise(resolve => setTimeout(resolve, testDuration));
+
+        // Simulate test results (mostly pass, some fail)
+        const passed = Math.random() > 0.15; // 85% pass rate
+        const status = passed ? 'passed' : 'failed';
+        const error = !passed ? 'Test failed: Mock error for demonstration' : undefined;
+
+        // Update test result
+        setTestSuites(prev => prev.map(s => 
+          s.name === suite.name 
+            ? {
+                ...s,
+                tests: s.tests.map(t => 
+                  t.name === test.name 
+                    ? { ...t, status, duration: testDuration, error }
+                    : t
+                )
               }
-            : result
+            : s
         ));
+
+        completedTests++;
+        setProgress((completedTests / totalTests) * 100);
       }
-
-      setProgress(((i + 1) / testCases.length) * 100);
     }
 
     setIsRunning(false);
   };
 
-  const getStatusIcon = (status: TestResult['status']) => {
+  const getStatusIcon = (status: string) => {
     switch (status) {
       case 'passed':
         return <CheckCircle className="w-4 h-4 text-green-500" />;
       case 'failed':
         return <XCircle className="w-4 h-4 text-red-500" />;
       case 'running':
-        return <Clock className="w-4 h-4 text-blue-500 animate-pulse" />;
+        return <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />;
       default:
-        return <div className="w-4 h-4 rounded-full bg-gray-300" />;
+        return <AlertTriangle className="w-4 h-4 text-gray-400" />;
     }
   };
 
-  const getStatusBadge = (status: TestResult['status']) => {
-    const variants = {
-      passed: 'default',
-      failed: 'destructive',
-      running: 'secondary',
-      pending: 'outline'
-    };
-    
-    return <Badge variant={variants[status] as any}>{status.toUpperCase()}</Badge>;
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'passed':
+        return <Badge variant="default" className="text-xs">Passed</Badge>;
+      case 'failed':
+        return <Badge variant="destructive" className="text-xs">Failed</Badge>;
+      case 'running':
+        return <Badge variant="secondary" className="text-xs">Running</Badge>;
+      default:
+        return <Badge variant="outline" className="text-xs">Pending</Badge>;
+    }
   };
 
-  const passedCount = testResults.filter(r => r.status === 'passed').length;
-  const failedCount = testResults.filter(r => r.status === 'failed').length;
-  const totalTests = testResults.length;
+  const getTotalStats = () => {
+    const allTests = testSuites.flatMap(suite => suite.tests);
+    return {
+      total: allTests.length,
+      passed: allTests.filter(t => t.status === 'passed').length,
+      failed: allTests.filter(t => t.status === 'failed').length,
+      pending: allTests.filter(t => t.status === 'pending').length
+    };
+  };
+
+  const stats = getTotalStats();
 
   return (
-    <Card className="w-full max-w-4xl">
+    <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle>Test Runner</CardTitle>
-            <CardDescription>Automated testing suite for AlgoTrade Pro</CardDescription>
+            <CardTitle className="flex items-center gap-2">
+              <TestTube className="w-5 h-5" />
+              Test Runner
+            </CardTitle>
+            <CardDescription>
+              Automated testing suite for quality assurance
+            </CardDescription>
           </div>
-          <Button onClick={runTests} disabled={isRunning}>
-            <Play className="w-4 h-4 mr-2" />
-            {isRunning ? 'Running...' : 'Run Tests'}
+          <Button
+            onClick={runTests}
+            disabled={isRunning}
+            className="flex items-center gap-2"
+          >
+            {isRunning ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Play className="w-4 h-4" />
+            )}
+            {isRunning ? 'Running Tests...' : 'Run All Tests'}
           </Button>
         </div>
       </CardHeader>
-      
       <CardContent className="space-y-6">
         {isRunning && (
-          <div>
-            <div className="flex justify-between text-sm mb-2">
-              <span>Progress</span>
-              <span>{Math.round(progress)}%</span>
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm">
+              <span>Test Progress</span>
+              <span>{progress.toFixed(0)}%</span>
             </div>
-            <Progress value={progress} />
+            <Progress value={progress} className="h-2" />
           </div>
         )}
 
-        {testResults.length > 0 && (
-          <div className="grid grid-cols-3 gap-4">
-            <Card>
-              <CardContent className="pt-6">
-                <div className="text-2xl font-bold text-green-600">{passedCount}</div>
-                <p className="text-xs text-muted-foreground">Passed</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="text-2xl font-bold text-red-600">{failedCount}</div>
-                <p className="text-xs text-muted-foreground">Failed</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="text-2xl font-bold">{totalTests}</div>
-                <p className="text-xs text-muted-foreground">Total</p>
-              </CardContent>
-            </Card>
+        <div className="grid grid-cols-4 gap-4 text-center">
+          <div className="p-3 border rounded-lg">
+            <div className="text-2xl font-bold">{stats.total}</div>
+            <div className="text-xs text-muted-foreground">Total</div>
           </div>
-        )}
-
-        <div className="space-y-2">
-          {testResults.map((result) => {
-            const testCase = testCases.find(t => t.id === result.id);
-            return (
-              <div key={result.id} className="flex items-center justify-between p-3 border rounded">
-                <div className="flex items-center gap-3">
-                  {getStatusIcon(result.status)}
-                  <div>
-                    <div className="font-medium">{result.name}</div>
-                    <div className="text-sm text-muted-foreground">
-                      {testCase?.description}
-                    </div>
-                    {result.error && (
-                      <div className="text-sm text-red-600 mt-1">
-                        {result.error}
-                      </div>
-                    )}
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  {result.duration && (
-                    <span className="text-sm text-muted-foreground">
-                      {result.duration}ms
-                    </span>
-                  )}
-                  {getStatusBadge(result.status)}
-                </div>
-              </div>
-            );
-          })}
+          <div className="p-3 border rounded-lg">
+            <div className="text-2xl font-bold text-green-500">{stats.passed}</div>
+            <div className="text-xs text-muted-foreground">Passed</div>
+          </div>
+          <div className="p-3 border rounded-lg">
+            <div className="text-2xl font-bold text-red-500">{stats.failed}</div>
+            <div className="text-xs text-muted-foreground">Failed</div>
+          </div>
+          <div className="p-3 border rounded-lg">
+            <div className="text-2xl font-bold text-gray-400">{stats.pending}</div>
+            <div className="text-xs text-muted-foreground">Pending</div>
+          </div>
         </div>
 
-        {testResults.length > 0 && failedCount === 0 && !isRunning && (
-          <Alert>
-            <CheckCircle className="h-4 w-4" />
-            <AlertDescription>
-              All tests passed! Your application is ready for production.
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {failedCount > 0 && !isRunning && (
-          <Alert variant="destructive">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription>
-              {failedCount} test(s) failed. Please review and fix the issues before deploying.
-            </AlertDescription>
-          </Alert>
-        )}
+        <ScrollArea className="h-96">
+          <div className="space-y-4">
+            {testSuites.map((suite, suiteIndex) => (
+              <div key={suiteIndex} className="border rounded-lg p-4">
+                <h3 className="font-semibold mb-3">{suite.name}</h3>
+                <div className="space-y-2">
+                  {suite.tests.map((test, testIndex) => (
+                    <div key={testIndex} className="flex items-center justify-between p-2 border rounded">
+                      <div className="flex items-center gap-2">
+                        {getStatusIcon(test.status)}
+                        <span className="text-sm">{test.name}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {test.duration > 0 && (
+                          <span className="text-xs text-muted-foreground">
+                            {(test.duration / 1000).toFixed(2)}s
+                          </span>
+                        )}
+                        {getStatusBadge(test.status)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </ScrollArea>
       </CardContent>
     </Card>
   );

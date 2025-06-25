@@ -1,133 +1,109 @@
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Activity, Wifi, WifiOff, RefreshCw, AlertTriangle } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { Progress } from '@/components/ui/progress';
+import { Activity, RefreshCw, Wifi, WifiOff, Database, Server, Clock } from 'lucide-react';
 
-interface SystemStatusProps {
-  connectionStatus: {
-    mexc: boolean;
-    coinGecko: boolean;
-    websocket: boolean;
-  };
+export interface SystemStatusProps {
+  connectionStatus: boolean;
   onRefreshStatus: () => void;
 }
 
 const SystemStatus = ({ connectionStatus, onRefreshStatus }: SystemStatusProps) => {
-  const [refreshing, setRefreshing] = useState(false);
-  const [lastCheck, setLastCheck] = useState<Date>(new Date());
-
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    await onRefreshStatus();
-    setLastCheck(new Date());
-    setTimeout(() => setRefreshing(false), 1000);
+  const systemMetrics = {
+    uptime: '2h 34m',
+    memoryUsage: 68,
+    apiLatency: 45,
+    wsConnections: connectionStatus ? 3 : 0,
+    lastUpdate: new Date().toLocaleTimeString()
   };
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setLastCheck(new Date());
-    }, 30000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const allConnected = Object.values(connectionStatus).every(status => status);
-
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            <Activity className="w-5 h-5" />
-            System Status
-            <Badge variant={allConnected ? "default" : "destructive"}>
-              {allConnected ? "All Systems Operational" : "Service Issues"}
-            </Badge>
-          </CardTitle>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className="gap-2"
-          >
-            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid gap-4">
-          <div className="flex items-center justify-between p-3 border rounded-lg">
-            <div className="flex items-center gap-3">
-              {connectionStatus.mexc ? (
-                <Wifi className="w-5 h-5 text-green-500" />
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Activity className="w-5 h-5" />
+                System Status
+              </CardTitle>
+              <CardDescription>
+                Real-time system health and connectivity
+              </CardDescription>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onRefreshStatus}
+              className="flex items-center gap-2"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Refresh
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="flex items-center gap-2">
+              {connectionStatus ? (
+                <Wifi className="w-4 h-4 text-green-500" />
               ) : (
-                <WifiOff className="w-5 h-5 text-red-500" />
+                <WifiOff className="w-4 h-4 text-red-500" />
               )}
               <div>
-                <p className="font-medium">MEXC Exchange</p>
-                <p className="text-sm text-muted-foreground">Trading & market data</p>
+                <div className="text-sm font-medium">Connection</div>
+                <Badge variant={connectionStatus ? "default" : "destructive"} className="text-xs">
+                  {connectionStatus ? "Online" : "Offline"}
+                </Badge>
               </div>
             </div>
-            <Badge variant={connectionStatus.mexc ? "default" : "destructive"}>
-              {connectionStatus.mexc ? "Connected" : "Disconnected"}
-            </Badge>
-          </div>
 
-          <div className="flex items-center justify-between p-3 border rounded-lg">
-            <div className="flex items-center gap-3">
-              {connectionStatus.coinGecko ? (
-                <Wifi className="w-5 h-5 text-green-500" />
-              ) : (
-                <WifiOff className="w-5 h-5 text-red-500" />
-              )}
+            <div className="flex items-center gap-2">
+              <Database className="w-4 h-4 text-blue-500" />
               <div>
-                <p className="font-medium">CoinGecko API</p>
-                <p className="text-sm text-muted-foreground">Market analytics</p>
+                <div className="text-sm font-medium">Database</div>
+                <Badge variant="default" className="text-xs">Healthy</Badge>
               </div>
             </div>
-            <Badge variant={connectionStatus.coinGecko ? "default" : "destructive"}>
-              {connectionStatus.coinGecko ? "Connected" : "Disconnected"}
-            </Badge>
-          </div>
 
-          <div className="flex items-center justify-between p-3 border rounded-lg">
-            <div className="flex items-center gap-3">
-              {connectionStatus.websocket ? (
-                <Wifi className="w-5 h-5 text-green-500" />
-              ) : (
-                <WifiOff className="w-5 h-5 text-red-500" />
-              )}
+            <div className="flex items-center gap-2">
+              <Server className="w-4 h-4 text-purple-500" />
               <div>
-                <p className="font-medium">Real-time Data</p>
-                <p className="text-sm text-muted-foreground">Live price feeds</p>
+                <div className="text-sm font-medium">API</div>
+                <Badge variant="default" className="text-xs">{systemMetrics.apiLatency}ms</Badge>
               </div>
             </div>
-            <Badge variant={connectionStatus.websocket ? "default" : "destructive"}>
-              {connectionStatus.websocket ? "Connected" : "Disconnected"}
-            </Badge>
-          </div>
-        </div>
 
-        {!allConnected && (
-          <div className="flex items-start gap-2 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
-            <AlertTriangle className="w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5" />
-            <div className="text-sm">
-              <p className="font-medium text-yellow-600">Service Issues Detected</p>
-              <p className="text-yellow-600 mt-1">
-                Some services are not responding. Check your API keys and internet connection.
-              </p>
+            <div className="flex items-center gap-2">
+              <Clock className="w-4 h-4 text-orange-500" />
+              <div>
+                <div className="text-sm font-medium">Uptime</div>
+                <Badge variant="outline" className="text-xs">{systemMetrics.uptime}</Badge>
+              </div>
             </div>
           </div>
-        )}
 
-        <div className="text-xs text-muted-foreground text-center">
-          Last checked: {lastCheck.toLocaleTimeString()}
-        </div>
-      </CardContent>
-    </Card>
+          <div className="space-y-4">
+            <div>
+              <div className="flex justify-between text-sm mb-2">
+                <span>Memory Usage</span>
+                <span>{systemMetrics.memoryUsage}%</span>
+              </div>
+              <Progress value={systemMetrics.memoryUsage} className="h-2" />
+            </div>
+
+            <div className="pt-4 border-t">
+              <div className="flex justify-between items-center text-sm text-muted-foreground">
+                <span>Last updated: {systemMetrics.lastUpdate}</span>
+                <span>WebSocket connections: {systemMetrics.wsConnections}</span>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 

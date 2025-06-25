@@ -1,185 +1,132 @@
 
-import { MexcPrivateService } from './mexcPrivateService';
-import { enhancedWsService, AccountUpdateData } from './enhancedWebSocketService';
-import { toast } from 'sonner';
+import { enhancedDataService } from './enhancedDataService';
 
 export interface Position {
   symbol: string;
   asset: string;
   quantity: number;
-  free: number;
-  locked: number;
   price: number;
   value: number;
+  free: number;
+  locked: number;
   change24h: number;
   changePercent24h: number;
 }
 
 export interface Portfolio {
-  positions: Position[];
   totalValue: number;
   totalChange: number;
   totalChangePercent: number;
+  positions: Position[];
   lastUpdate: number;
   isLoading: boolean;
 }
 
 export class PortfolioManager {
-  private mexcService: MexcPrivateService | null = null;
   private portfolio: Portfolio = {
-    positions: [],
     totalValue: 0,
     totalChange: 0,
     totalChangePercent: 0,
-    lastUpdate: 0,
-    isLoading: false
+    positions: [],
+    lastUpdate: Date.now(),
+    isLoading: true
   };
+
   private subscribers = new Set<(portfolio: Portfolio) => void>();
-  private updateTimer: NodeJS.Timeout | null = null;
-  private isDemo = false;
+  private updateInterval: NodeJS.Timeout | null = null;
 
   constructor() {
-    try {
-      this.mexcService = new MexcPrivateService();
-      console.log('PortfolioManager: Using live MEXC data');
-    } catch (error) {
-      console.log('PortfolioManager: Using demo mode');
-      this.isDemo = true;
-      this.initializeDemoPortfolio();
-    }
-
-    // Subscribe to account updates
-    enhancedWsService.subscribe('account_update', this.handleAccountUpdate.bind(this));
-    
-    // Start periodic updates
+    this.initializePortfolio();
     this.startPeriodicUpdates();
   }
 
-  private initializeDemoPortfolio(): void {
-    this.portfolio = {
-      positions: [
+  private async initializePortfolio() {
+    try {
+      // Load demo positions for demonstration
+      const demoPositions: Position[] = [
         {
           symbol: 'BTCUSDT',
           asset: 'BTC',
-          quantity: 0.5,
-          free: 0.5,
+          quantity: 0.25,
+          price: 45000,
+          value: 11250,
+          free: 0.25,
           locked: 0,
-          price: 45234,
-          value: 22617,
-          change24h: 1234,
-          changePercent24h: 2.8
+          change24h: 125,
+          changePercent24h: 1.12
         },
         {
           symbol: 'ETHUSDT',
           asset: 'ETH',
-          quantity: 8.2,
-          free: 7.8,
-          locked: 0.4,
-          price: 2456,
-          value: 20139,
-          change24h: -156,
-          changePercent24h: -0.8
+          quantity: 4.5,
+          price: 2500,
+          value: 11250,
+          free: 4.5,
+          locked: 0,
+          change24h: -75,
+          changePercent24h: -0.66
         },
         {
           symbol: 'BNBUSDT',
           asset: 'BNB',
-          quantity: 15.6,
-          free: 15.6,
+          quantity: 15,
+          price: 300,
+          value: 4500,
+          free: 15,
           locked: 0,
-          price: 312,
-          value: 4867,
-          change24h: 87,
-          changePercent24h: 1.9
+          change24h: 45,
+          changePercent24h: 1.01
         }
-      ],
-      totalValue: 47623,
-      totalChange: 1165,
-      totalChangePercent: 2.5,
-      lastUpdate: Date.now(),
-      isLoading: false
-    };
-  }
+      ];
 
-  async refreshPortfolio(): Promise<void> {
-    if (this.portfolio.isLoading) return;
+      this.portfolio = {
+        ...this.portfolio,
+        positions: demoPositions,
+        totalValue: demoPositions.reduce((sum, pos) => sum + pos.value, 0),
+        totalChange: demoPositions.reduce((sum, pos) => sum + pos.change24h, 0),
+        totalChangePercent: 0.52,
+        lastUpdate: Date.now(),
+        isLoading: false
+      };
 
-    this.portfolio.isLoading = true;
-    this.notifySubscribers();
-
-    try {
-      if (this.isDemo) {
-        // Update demo portfolio with random changes
-        this.updateDemoPortfolio();
-      } else {
-        await this.fetchRealPortfolio();
-      }
+      this.notifySubscribers();
     } catch (error) {
-      console.error('Failed to refresh portfolio:', error);
-      toast.error('Failed to update portfolio data');
-    } finally {
+      console.error('Failed to initialize portfolio:', error);
       this.portfolio.isLoading = false;
-      this.portfolio.lastUpdate = Date.now();
       this.notifySubscribers();
     }
   }
 
-  private async fetchRealPortfolio(): Promise<void> {
-    if (!this.mexcService) return;
-
-    const accountInfo = await this.mexcService.getAccountInfo();
-    const positions: Position[] = [];
-
-    // Process non-zero balances
-    const nonZeroBalances = accountInfo.balances.filter(
-      balance => parseFloat(balance.free) > 0 || parseFloat(balance.locked) > 0
-    );
-
-    for (const balance of nonZeroBalances) {
-      if (balance.asset === 'USDT') continue; // Skip USDT for now
-
-      try {
-        const symbol = `${balance.asset}USDT`;
-        const price = await this.getAssetPrice(symbol);
-        const quantity = parseFloat(balance.free) + parseFloat(balance.locked);
-        
-        if (quantity > 0 && price > 0) {
-          positions.push({
-            symbol,
-            asset: balance.asset,
-            quantity,
-            free: parseFloat(balance.free),
-            locked: parseFloat(balance.locked),
-            price,
-            value: quantity * price,
-            change24h: 0, // Will be updated by price stream
-            changePercent24h: 0
-          });
-        }
-      } catch (error) {
-        console.warn(`Failed to get price for ${balance.asset}:`, error);
-      }
-    }
-
-    // Calculate totals
-    const totalValue = positions.reduce((sum, pos) => sum + pos.value, 0);
-    const totalChange = positions.reduce((sum, pos) => sum + pos.change24h, 0);
-    const totalChangePercent = totalValue > 0 ? (totalChange / totalValue) * 100 : 0;
-
-    this.portfolio = {
-      positions,
-      totalValue,
-      totalChange,
-      totalChangePercent,
-      lastUpdate: Date.now(),
-      isLoading: false
-    };
+  private startPeriodicUpdates() {
+    this.updateInterval = setInterval(() => {
+      this.refreshPortfolio();
+    }, 30000); // Update every 30 seconds
   }
 
-  private updateDemoPortfolio(): void {
-    // Simulate price changes for demo
+  subscribe(callback: (portfolio: Portfolio) => void) {
+    this.subscribers.add(callback);
+    callback(this.portfolio); // Send current state immediately
+  }
+
+  unsubscribe(callback: (portfolio: Portfolio) => void) {
+    this.subscribers.delete(callback);
+  }
+
+  private notifySubscribers() {
+    this.subscribers.forEach(callback => {
+      try {
+        callback(this.portfolio);
+      } catch (error) {
+        console.error('Error in portfolio subscriber:', error);
+      }
+    });
+  }
+
+  refreshPortfolio() {
+    // Simulate portfolio updates
     this.portfolio.positions = this.portfolio.positions.map(position => {
-      const priceChange = (Math.random() - 0.5) * position.price * 0.02;
-      const newPrice = position.price + priceChange;
+      const priceChange = (Math.random() - 0.5) * 0.02; // ±1% change
+      const newPrice = position.price * (1 + priceChange);
       const newValue = position.quantity * newPrice;
       const change24h = newValue - position.value;
       const changePercent24h = (change24h / position.value) * 100;
@@ -193,74 +140,22 @@ export class PortfolioManager {
       };
     });
 
-    // Recalculate totals
     this.portfolio.totalValue = this.portfolio.positions.reduce((sum, pos) => sum + pos.value, 0);
     this.portfolio.totalChange = this.portfolio.positions.reduce((sum, pos) => sum + pos.change24h, 0);
-    this.portfolio.totalChangePercent = this.portfolio.totalValue > 0 
-      ? (this.portfolio.totalChange / this.portfolio.totalValue) * 100 
-      : 0;
-  }
+    this.portfolio.totalChangePercent = (this.portfolio.totalChange / (this.portfolio.totalValue - this.portfolio.totalChange)) * 100;
+    this.portfolio.lastUpdate = Date.now();
 
-  private async getAssetPrice(symbol: string): Promise<number> {
-    try {
-      // Use CoinGecko or other price API
-      const response = await fetch(`https://api.mexc.com/api/v3/ticker/price?symbol=${symbol}`);
-      const data = await response.json();
-      return parseFloat(data.price);
-    } catch (error) {
-      console.error(`Failed to get price for ${symbol}:`, error);
-      return 0;
-    }
-  }
-
-  private handleAccountUpdate(data: AccountUpdateData): void {
-    if (this.isDemo) return;
-
-    console.log('Received account update:', data);
-    // Refresh portfolio when account balances change
-    this.refreshPortfolio();
-  }
-
-  private startPeriodicUpdates(): void {
-    // Update portfolio every 30 seconds
-    this.updateTimer = setInterval(() => {
-      this.refreshPortfolio();
-    }, 30000);
-    
-    // Initial load
-    this.refreshPortfolio();
-  }
-
-  subscribe(callback: (portfolio: Portfolio) => void): void {
-    this.subscribers.add(callback);
-    // Immediately notify new subscriber
-    callback(this.portfolio);
-  }
-
-  unsubscribe(callback: (portfolio: Portfolio) => void): void {
-    this.subscribers.delete(callback);
-  }
-
-  private notifySubscribers(): void {
-    this.subscribers.forEach(callback => {
-      try {
-        callback(this.portfolio);
-      } catch (error) {
-        console.error('Error in portfolio subscriber:', error);
-      }
-    });
+    this.notifySubscribers();
   }
 
   getPortfolio(): Portfolio {
     return this.portfolio;
   }
 
-  cleanup(): void {
-    if (this.updateTimer) {
-      clearInterval(this.updateTimer);
-      this.updateTimer = null;
+  cleanup() {
+    if (this.updateInterval) {
+      clearInterval(this.updateInterval);
     }
-    enhancedWsService.unsubscribe('account_update', this.handleAccountUpdate.bind(this));
     this.subscribers.clear();
   }
 }

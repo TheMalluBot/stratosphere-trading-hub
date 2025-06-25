@@ -1,58 +1,64 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { ApiKeyManager } from '@/services/apiKeyManager';
 import { toast } from 'sonner';
-import { SecureApiKeyManager, ApiKeys } from '@/services/secureApiKeyManager';
+
+export interface ApiKeys {
+  mexc: {
+    apiKey: string;
+    secretKey: string;
+  };
+  coinGecko: {
+    apiKey: string;
+  };
+}
+
+export interface NotificationSettings {
+  priceAlerts: boolean;
+  orderExecutions: boolean;
+  systemUpdates: boolean;
+  emailNotifications: boolean;
+  pushNotifications: boolean;
+}
 
 export const useSettings = () => {
   const [apiKeys, setApiKeys] = useState<ApiKeys>({
-    mexc: { apiKey: "", secretKey: "" },
-    coinGecko: { apiKey: "" }
+    mexc: { apiKey: '', secretKey: '' },
+    coinGecko: { apiKey: '' }
   });
-
-  const [notifications, setNotifications] = useState({
-    trades: true,
+  const [notifications, setNotifications] = useState<NotificationSettings>({
     priceAlerts: true,
-    systemUpdates: false,
-    marketNews: true
+    orderExecutions: true,
+    systemUpdates: true,
+    emailNotifications: false,
+    pushNotifications: true
   });
-
-  const [connected, setConnected] = useState({
-    mexc: false,
-    coinGecko: false,
-    websocket: false
-  });
-
-  const [testing, setTesting] = useState({
-    mexc: false,
-    coinGecko: false
-  });
-
+  const [connected, setConnected] = useState(false);
+  const [testing, setTesting] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // Load saved API keys on mount
   useEffect(() => {
-    const loadApiKeys = async () => {
-      try {
-        const savedKeys = await SecureApiKeyManager.getApiKeys();
-        if (savedKeys) {
-          setApiKeys(savedKeys);
-          // Check if keys are present and valid - fix the build error by including websocket
-          setConnected({
-            mexc: !!(savedKeys.mexc.apiKey && savedKeys.mexc.secretKey),
-            coinGecko: !!savedKeys.coinGecko.apiKey,
-            websocket: false // Default websocket to false initially
-          });
-        }
-      } catch (error) {
-        console.error('Failed to load API keys:', error);
-        toast.error('Failed to load saved settings');
-      }
-    };
-
-    loadApiKeys();
+    loadSettings();
   }, []);
 
-  const handleApiKeyChange = (provider: 'mexc' | 'coinGecko', field: string, value: string) => {
+  const loadSettings = async () => {
+    try {
+      const savedKeys = await ApiKeyManager.getApiKeys();
+      if (savedKeys) {
+        setApiKeys(savedKeys);
+        setConnected(true);
+      }
+
+      const savedNotifications = localStorage.getItem('notification_settings');
+      if (savedNotifications) {
+        setNotifications(JSON.parse(savedNotifications));
+      }
+    } catch (error) {
+      console.error('Failed to load settings:', error);
+    }
+  };
+
+  const handleApiKeyChange = useCallback((provider: 'mexc' | 'coinGecko', field: string, value: string) => {
     setApiKeys(prev => ({
       ...prev,
       [provider]: {
@@ -60,73 +66,51 @@ export const useSettings = () => {
         [field]: value
       }
     }));
-  };
+  }, []);
 
-  const testConnection = async (provider: 'mexc' | 'coinGecko') => {
-    setTesting(prev => ({ ...prev, [provider]: true }));
-    toast.loading(`Testing ${provider.toUpperCase()} connection...`);
-    
+  const testConnection = useCallback(async () => {
+    setTesting(true);
     try {
-      const isConnected = await SecureApiKeyManager.testConnection(provider);
+      const mexcValid = await ApiKeyManager.testConnection('mexc');
+      const coinGeckoValid = await ApiKeyManager.testConnection('coinGecko');
       
-      if (isConnected) {
-        setConnected(prev => ({ ...prev, [provider]: true }));
-        toast.success(`${provider.toUpperCase()} connected successfully!`);
+      if (mexcValid && coinGeckoValid) {
+        setConnected(true);
+        toast.success('Connection test successful');
       } else {
-        setConnected(prev => ({ ...prev, [provider]: false }));
-        toast.error(`Failed to connect to ${provider.toUpperCase()}. Please check your credentials.`);
+        toast.error('Connection test failed - check your API keys');
       }
     } catch (error) {
-      console.error(`${provider} connection test failed:`, error);
-      setConnected(prev => ({ ...prev, [provider]: false }));
-      toast.error(`${provider.toUpperCase()} connection test failed.`);
+      toast.error('Connection test failed');
     } finally {
-      setTesting(prev => ({ ...prev, [provider]: false }));
+      setTesting(false);
     }
-  };
+  }, []);
 
-  const saveSettings = async () => {
+  const saveSettings = useCallback(async () => {
     setSaving(true);
     try {
-      await SecureApiKeyManager.saveApiKeys(apiKeys);
-      
-      // Update connection status
-      setConnected(prev => ({
-        ...prev,
-        mexc: !!(apiKeys.mexc.apiKey && apiKeys.mexc.secretKey),
-        coinGecko: !!apiKeys.coinGecko.apiKey
-      }));
-      
-      toast.success("Settings saved successfully!");
-      
-      // Reload the page to reinitialize services with new keys
-      setTimeout(() => {
-        window.location.reload();
-      }, 1000);
-      
+      await ApiKeyManager.saveApiKeys(apiKeys);
+      localStorage.setItem('notification_settings', JSON.stringify(notifications));
+      toast.success('Settings saved successfully');
     } catch (error) {
-      console.error('Failed to save settings:', error);
-      toast.error(`Failed to save settings: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      toast.error('Failed to save settings');
     } finally {
       setSaving(false);
     }
-  };
+  }, [apiKeys, notifications]);
 
-  const handleNotificationChange = (key: string, value: boolean) => {
-    setNotifications(prev => ({ ...prev, [key]: value }));
-  };
-
-  const refreshSystemStatus = async () => {
-    // Check all connections
-    const mexcStatus = await SecureApiKeyManager.testConnection('mexc');
-    const coinGeckoStatus = await SecureApiKeyManager.testConnection('coinGecko');
-    
-    setConnected(prev => ({
-      mexc: mexcStatus,
-      coinGecko: coinGeckoStatus,
-      websocket: true // Assume websocket is working for now
+  const handleNotificationChange = useCallback((key: keyof NotificationSettings, value: boolean) => {
+    setNotifications(prev => ({
+      ...prev,
+      [key]: value
     }));
-  };
+  }, []);
+
+  const refreshSystemStatus = useCallback(async () => {
+    await loadSettings();
+    await testConnection();
+  }, [testConnection]);
 
   return {
     apiKeys,

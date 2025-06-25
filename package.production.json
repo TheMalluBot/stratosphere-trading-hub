@@ -1,0 +1,12 @@
+
+{
+  "scripts": {
+    "build:production": "vite build --config vite.config.production.ts",
+    "test:production": "echo 'Production tests would run here'",
+    "validate:production": "node -e \"require('./src/utils/productionValidator.ts').ProductionValidator.runAllValidations().then(console.log)\"",
+    "security:scan": "npm audit --audit-level moderate",
+    "performance:analyze": "vite-bundle-analyzer dist/stats.html",
+    "deploy:staging": "./deploy.sh staging",
+    "deploy:production": "./deploy.sh production"
+  }
+}

@@ -1,3 +1,22 @@
+// WebGPU type definitions for environments that don't have them
+declare global {
+  interface Navigator {
+    gpu?: GPU;
+  }
+  
+  interface GPU {
+    requestAdapter(): Promise<GPUAdapter | null>;
+  }
+  
+  interface GPUAdapter {
+    requestDevice(): Promise<GPUDevice>;
+    features: Set<string>;
+  }
+  
+  interface GPUDevice {
+    // Minimal interface for our needs
+  }
+}
 
 export interface GPUCapabilities {
   supported: boolean;
@@ -168,7 +187,6 @@ export class GPUComputeService {
     return this.cpuTechnicalIndicators(data);
   }
 
-  // CPU fallback implementations
   private cpuMatrixMultiply(data: { a: number[][]; b: number[][] }): number[][] {
     const { a, b } = data;
     const result: number[][] = [];

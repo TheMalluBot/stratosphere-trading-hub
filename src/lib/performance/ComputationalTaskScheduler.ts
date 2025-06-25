@@ -1,4 +1,3 @@
-
 import { gpuComputeService } from './GPUComputeService';
 import { advancedWasmEngine } from './AdvancedWebAssemblyEngine';
 import { highPerformanceManager } from './HighPerformanceManager';
@@ -7,7 +6,7 @@ export interface ScheduledTask {
   id: string;
   name: string;
   type: 'analysis' | 'calculation' | 'optimization' | 'simulation';
-  priority: 'low' | 'medium' | 'high' | 'critical';
+  priority: 'low' | 'medium' | 'high';
   data: any;
   dependencies?: string[];
   estimatedDuration: number;
@@ -138,7 +137,7 @@ export class ComputationalTaskScheduler {
       .filter(task => !task.scheduledFor || task.scheduledFor <= Date.now())
       .sort((a, b) => {
         // Sort by priority then by creation time
-        const priorityOrder = { critical: 0, high: 1, medium: 2, low: 3 };
+        const priorityOrder = { high: 0, medium: 1, low: 2 };
         const aPriority = priorityOrder[a.priority];
         const bPriority = priorityOrder[b.priority];
         

@@ -1,4 +1,3 @@
-
 export interface TechnicalIndicators {
   sma: number[];
   ema: number[];
@@ -231,12 +230,12 @@ export class AdvancedWebAssemblyEngine {
 
   private calculateMomentumScore(indicators: TechnicalIndicators): number {
     const rsi = indicators.rsi;
-    const macd = indicators.macd;
+    const macdData = indicators.macd;
     
-    if (rsi.length === 0 || macd.length === 0) return 50;
+    if (rsi.length === 0 || macdData.macd.length === 0) return 50;
     
     const lastRSI = rsi[rsi.length - 1];
-    const lastMACD = macd[macd.length - 1];
+    const lastMACD = macdData.macd[macdData.macd.length - 1];
     
     return (lastRSI + (lastMACD > 0 ? 75 : 25)) / 2;
   }

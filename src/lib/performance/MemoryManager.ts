@@ -1,4 +1,3 @@
-
 export class MemoryManager {
   private cleanupTasks = new Set<() => void>();
   private memoryThreshold = 100 * 1024 * 1024; // 100MB
@@ -118,10 +117,17 @@ export class MemoryManager {
   }
 
   private clearComponentCache() {
-    // Clear React query cache if available
-    if (window.__REACT_QUERY_CACHE__) {
-      (window as any).__REACT_QUERY_CACHE__.clear();
-    }
+    // Clear any cached data structures
+    const cacheKeys = ['_reactInternalCache', '_componentCache'];
+    cacheKeys.forEach(key => {
+      if ((window as any)[key]) {
+        try {
+          (window as any)[key].clear();
+        } catch (error) {
+          console.warn(`Could not clear cache ${key}:`, error);
+        }
+      }
+    });
   }
 
   optimizeScrolling(container: HTMLElement) {

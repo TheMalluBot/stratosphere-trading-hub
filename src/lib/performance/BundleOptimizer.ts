@@ -12,7 +12,7 @@ export class BundleOptimizer {
     const criticalComponents = [
       () => import('@/components/trading/TradingChart'),
       () => import('@/components/trading/OrderForm'),
-      () => import('@/components/portfolio/PortfolioStats'),
+      () => import('@/components/dashboard/PortfolioStats'),
       () => import('@/components/trading/OrderBook')
     ];
 

@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { TrendingUp, BarChart3, DollarSign, Activity } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +9,7 @@ import RealTimeOrderBook from "@/components/trading/RealTimeOrderBook";
 import TradingHistory from "@/components/trading/TradingHistory";
 import AdvancedOrderForm from "@/components/trading/AdvancedOrderForm";
 import SmartExecution from "@/components/trading/SmartExecution";
+import HighPerformanceAnalytics from "@/components/trading/HighPerformanceAnalytics";
 import { orderManager } from "@/services/orderManager";
 import { enhancedWsService } from "@/services/enhancedWebSocketService";
 
@@ -69,6 +69,13 @@ const Trading = () => {
           </p>
         </div>
       )}
+
+      {/* High-Performance Analytics - New Section */}
+      <HighPerformanceAnalytics 
+        symbol={selectedSymbol} 
+        prices={[]} 
+        volumes={[]} 
+      />
 
       {/* Trading Chart - Full Width */}
       <TradingChart symbol={selectedSymbol} />

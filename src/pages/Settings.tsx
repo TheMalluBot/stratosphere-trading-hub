@@ -9,6 +9,7 @@ import SystemStatus from '@/components/settings/SystemStatus';
 import HealthMonitor from '@/components/system/HealthMonitor';
 import TestRunner from '@/components/testing/TestRunner';
 import { useSecurityAuditLogger } from '@/components/security/SecurityAuditLogger';
+import { useSettings } from '@/hooks/useSettings';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
@@ -16,6 +17,20 @@ const Settings = () => {
   const [activeTab, setActiveTab] = useState('general');
   const { getEvents, detectAnomalies, exportLogs, clearLogs } = useSecurityAuditLogger();
   const [showSecurityLogs, setShowSecurityLogs] = useState(false);
+
+  // Use the settings hook to get all the required props
+  const {
+    apiKeys,
+    notifications,
+    connected,
+    testing,
+    saving,
+    handleApiKeyChange,
+    testConnection,
+    saveSettings,
+    handleNotificationChange,
+    refreshSystemStatus
+  } = useSettings();
 
   const securityEvents = getEvents(undefined, 50); // Last 50 events
   const anomalies = detectAnomalies();
@@ -78,15 +93,29 @@ const Settings = () => {
         </TabsContent>
 
         <TabsContent value="api" className="space-y-6">
-          <ApiTab />
+          <ApiTab
+            apiKeys={apiKeys}
+            connected={connected}
+            testing={testing}
+            saving={saving}
+            onApiKeyChange={handleApiKeyChange}
+            onTestConnection={testConnection}
+            onSaveSettings={saveSettings}
+          />
         </TabsContent>
 
         <TabsContent value="notifications" className="space-y-6">
-          <NotificationSettings />
+          <NotificationSettings
+            notifications={notifications}
+            onNotificationChange={handleNotificationChange}
+          />
         </TabsContent>
 
         <TabsContent value="system" className="space-y-6">
-          <SystemStatus />
+          <SystemStatus
+            connectionStatus={connected}
+            onRefreshStatus={refreshSystemStatus}
+          />
           <HealthMonitor />
         </TabsContent>
 

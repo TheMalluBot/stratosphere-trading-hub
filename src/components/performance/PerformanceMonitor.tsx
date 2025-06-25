@@ -51,10 +51,10 @@ const PerformanceMonitor = () => {
         latency: connection.rtt || 0
       };
 
-      // Render performance
+      // Render performance - fix navigationStart issue
       const navigationTiming = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming;
       const renderTime = navigationTiming ? 
-        Math.round(navigationTiming.loadEventEnd - navigationTiming.navigationStart) : 0;
+        Math.round(navigationTiming.loadEventEnd - navigationTiming.fetchStart) : 0;
 
       // Bundle size estimation
       const scripts = Array.from(document.getElementsByTagName('script'));

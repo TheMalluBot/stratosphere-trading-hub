@@ -1,13 +1,11 @@
 
-import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Zap, RotateCcw } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Zap } from "lucide-react";
+import { StrategySelector, strategies } from "./StrategySelector";
+import { ConfigurationForm } from "./ConfigurationForm";
 
 interface StrategyConfigurationProps {
   selectedStrategy: string;
@@ -24,39 +22,6 @@ interface StrategyConfigurationProps {
   setInitialCapital: (value: string) => void;
   onReset: () => void;
 }
-
-const strategies = [
-  {
-    value: "linear-regression",
-    label: "Linear Regression Oscillator",
-    description: "ChartPrime's mean reversion strategy with normalization",
-  },
-  {
-    value: "z-score-trend",
-    label: "Rolling Z-Score Trend",
-    description: "QuantAlgo's momentum strategy with z-score analysis",
-  },
-  {
-    value: "stop-loss-tp",
-    label: "Stop Loss & Take Profit",
-    description: "Risk management with fixed levels and SMA crossovers",
-  },
-  {
-    value: "deviation-trend",
-    label: "Deviation Trend Profile",
-    description: "BigBeluga's trend deviation analysis with support/resistance zones",
-  },
-  {
-    value: "volume-profile",
-    label: "Multi-Layer Volume Profile",
-    description: "BigBeluga's POC and value area volume analysis",
-  },
-  {
-    value: "ultimate-combined",
-    label: "🚀 Ultimate Combined Strategy",
-    description: "AI-powered combination of all 5 strategies",
-  },
-];
 
 export const StrategyConfiguration = ({
   selectedStrategy,
@@ -83,84 +48,23 @@ export const StrategyConfiguration = ({
         <CardDescription>Select and configure your trading strategy</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="space-y-2">
-          <Label>Strategy</Label>
-          <Select value={selectedStrategy} onValueChange={setSelectedStrategy}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {strategies.map((strategy) => (
-                <SelectItem key={strategy.value} value={strategy.value}>
-                  <div>
-                    <div className="font-medium">{strategy.label}</div>
-                    <div className="text-xs text-muted-foreground">{strategy.description}</div>
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        <StrategySelector 
+          selectedStrategy={selectedStrategy}
+          setSelectedStrategy={setSelectedStrategy}
+        />
 
-        <div className="space-y-2">
-          <Label>Symbol</Label>
-          <Select value={symbol} onValueChange={setSymbol}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="RELIANCE">Reliance Industries</SelectItem>
-              <SelectItem value="TCS">Tata Consultancy Services</SelectItem>
-              <SelectItem value="NIFTY50">NIFTY 50</SelectItem>
-              <SelectItem value="BTCUSDT">Bitcoin/USDT</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-2">
-          <Label>Timeframe</Label>
-          <Select value={timeframe} onValueChange={setTimeframe}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="1m">1 Minute</SelectItem>
-              <SelectItem value="5m">5 Minutes</SelectItem>
-              <SelectItem value="15m">15 Minutes</SelectItem>
-              <SelectItem value="1H">1 Hour</SelectItem>
-              <SelectItem value="1D">1 Day</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="grid grid-cols-2 gap-2">
-          <div className="space-y-2">
-            <Label>Start Date</Label>
-            <Input
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>End Date</Label>
-            <Input
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-            />
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          <Label>Initial Capital (₹)</Label>
-          <Input
-            type="number"
-            placeholder="100000"
-            value={initialCapital}
-            onChange={(e) => setInitialCapital(e.target.value)}
-          />
-        </div>
+        <ConfigurationForm
+          symbol={symbol}
+          setSymbol={setSymbol}
+          timeframe={timeframe}
+          setTimeframe={setTimeframe}
+          startDate={startDate}
+          setStartDate={setStartDate}
+          endDate={endDate}
+          setEndDate={setEndDate}
+          initialCapital={initialCapital}
+          setInitialCapital={setInitialCapital}
+        />
 
         {selectedStrategy === "ultimate-combined" && (
           <div className="p-3 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border">

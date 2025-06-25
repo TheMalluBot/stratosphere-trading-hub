@@ -1,25 +1,15 @@
 
 import { useEffect, useState } from "react";
-import { TrendingUp, BarChart3, DollarSign, Activity, Brain, Zap } from "lucide-react";
+import { TrendingUp, Activity } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import OrderForm from "@/components/trading/OrderForm";
-import PositionTracker from "@/components/trading/PositionTracker";
-import TradingChart from "@/components/trading/TradingChart";
 import LivePriceDisplay from "@/components/trading/LivePriceDisplay";
-import RealTimeOrderBook from "@/components/trading/RealTimeOrderBook";
-import TradingHistory from "@/components/trading/TradingHistory";
-import AdvancedOrderForm from "@/components/trading/AdvancedOrderForm";
-import SmartExecution from "@/components/trading/SmartExecution";
-import HighPerformanceAnalytics from "@/components/trading/HighPerformanceAnalytics";
-import AIInsightsDashboard from "@/components/ai/AIInsightsDashboard";
-import SmartOrderManagement from "@/components/trading/SmartOrderManagement";
 import ErrorBoundary from "@/components/error/ErrorBoundary";
 import { TradingChartSkeleton, OrderFormSkeleton, PortfolioSkeleton, OrderBookSkeleton } from "@/components/loading/LoadingStates";
 import { orderManager } from "@/services/orderManager";
 import { enhancedWsService } from "@/services/enhancedWebSocketService";
 import { useErrorHandler } from "@/hooks/useErrorHandler";
 import { useRetry } from "@/hooks/useRetry";
+import { TradingTabs } from "@/components/trading/TradingTabs";
 
 const Trading = () => {
   const selectedSymbol = "BTCUSDT";
@@ -171,104 +161,13 @@ const Trading = () => {
           </div>
         )}
 
-        {/* Main Trading Interface */}
-        <Tabs defaultValue="trading" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="trading" className="flex items-center gap-2">
-              <BarChart3 className="w-4 h-4" />
-              Trading
-            </TabsTrigger>
-            <TabsTrigger value="ai-insights" className="flex items-center gap-2">
-              <Brain className="w-4 h-4" />
-              AI Insights
-            </TabsTrigger>
-            <TabsTrigger value="smart-orders" className="flex items-center gap-2">
-              <Zap className="w-4 h-4" />
-              Smart Orders
-            </TabsTrigger>
-            <TabsTrigger value="analytics" className="flex items-center gap-2">
-              <DollarSign className="w-4 h-4" />
-              Analytics
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="trading" className="space-y-6">
-            {/* Trading Chart - Full Width */}
-            <ErrorBoundary fallback={<TradingChartSkeleton />}>
-              <TradingChart symbol={selectedSymbol} />
-            </ErrorBoundary>
-
-            {/* Advanced Trading Features */}
-            <div className="grid gap-6 lg:grid-cols-2">
-              <ErrorBoundary fallback={<OrderFormSkeleton />}>
-                <AdvancedOrderForm symbol={selectedSymbol} currentPrice={45234} />
-              </ErrorBoundary>
-              <ErrorBoundary>
-                <SmartExecution />
-              </ErrorBoundary>
-            </div>
-
-            {/* Trading Interface Grid */}
-            <div className="grid gap-6 lg:grid-cols-4">
-              {/* Basic Order Form */}
-              <div className="lg:col-span-1">
-                <ErrorBoundary fallback={<OrderFormSkeleton />}>
-                  <OrderForm selectedSymbol={selectedSymbol} currentPrice={45234} />
-                </ErrorBoundary>
-              </div>
-
-              {/* Real-time Order Book */}
-              <div className="lg:col-span-1">
-                <ErrorBoundary fallback={<OrderBookSkeleton />}>
-                  <RealTimeOrderBook symbol={selectedSymbol} />
-                </ErrorBoundary>
-              </div>
-
-              {/* Position Tracker */}
-              <div className="lg:col-span-1">
-                <ErrorBoundary fallback={<PortfolioSkeleton />}>
-                  <PositionTracker />
-                </ErrorBoundary>
-              </div>
-
-              {/* Trading History */}
-              <div className="lg:col-span-1">
-                <ErrorBoundary>
-                  <TradingHistory />
-                </ErrorBoundary>
-              </div>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="ai-insights" className="space-y-6">
-            <ErrorBoundary>
-              <AIInsightsDashboard 
-                symbol={selectedSymbol} 
-                marketData={marketData}
-                portfolio={portfolio}
-              />
-            </ErrorBoundary>
-          </TabsContent>
-
-          <TabsContent value="smart-orders" className="space-y-6">
-            <ErrorBoundary>
-              <SmartOrderManagement 
-                symbol={selectedSymbol} 
-                currentPrice={45234}
-              />
-            </ErrorBoundary>
-          </TabsContent>
-
-          <TabsContent value="analytics" className="space-y-6">
-            <ErrorBoundary>
-              <HighPerformanceAnalytics 
-                symbol={selectedSymbol} 
-                prices={marketData.map(d => d.close)} 
-                volumes={marketData.map(d => d.volume)} 
-              />
-            </ErrorBoundary>
-          </TabsContent>
-        </Tabs>
+        {/* Trading Interface */}
+        <TradingTabs 
+          selectedSymbol={selectedSymbol}
+          currentPrice={45234}
+          marketData={marketData}
+          portfolio={portfolio}
+        />
       </div>
     </ErrorBoundary>
   );

@@ -1,5 +1,6 @@
 
-import { ApiKeyManager } from './apiKeyManager';
+import { MexcHttpClient } from './mexc/MexcHttpClient';
+import { MexcAuth } from './mexc/MexcAuth';
 
 export interface AccountInfo {
   balances: {
@@ -36,111 +37,10 @@ export interface MexcOrder {
 }
 
 export class MexcPrivateService {
-  private baseUrl = 'https://api.mexc.com/api/v3';
-  private apiKey: string = '';
-  private secretKey: string = '';
-  private initialized = false;
-
-  constructor() {
-    // Initialize asynchronously
-    this.initialize();
-  }
-
-  private async initialize() {
-    const keys = await ApiKeyManager.getApiKeys();
-    if (!keys?.mexc.apiKey || !keys?.mexc.secretKey) {
-      console.warn('MEXC API keys not found. Please configure them in Settings.');
-      return;
-    }
-    this.apiKey = keys.mexc.apiKey;
-    this.secretKey = keys.mexc.secretKey;
-    this.initialized = true;
-  }
-
-  private async ensureInitialized() {
-    if (!this.initialized) {
-      await this.initialize();
-    }
-    if (!this.apiKey || !this.secretKey) {
-      throw new Error('MEXC API keys not found. Please configure them in Settings.');
-    }
-  }
-
-  private async createSignature(params: Record<string, any>): Promise<string> {
-    const query = new URLSearchParams();
-    Object.keys(params).sort().forEach(key => {
-      if (params[key] !== undefined) {
-        query.append(key, params[key].toString());
-      }
-    });
-    
-    const queryString = query.toString();
-    
-    // Use Web Crypto API for HMAC-SHA256
-    const encoder = new TextEncoder();
-    const keyData = encoder.encode(this.secretKey);
-    const messageData = encoder.encode(queryString);
-    
-    const cryptoKey = await crypto.subtle.importKey(
-      'raw',
-      keyData,
-      { name: 'HMAC', hash: 'SHA-256' },
-      false,
-      ['sign']
-    );
-    
-    const signature = await crypto.subtle.sign('HMAC', cryptoKey, messageData);
-    const hashArray = Array.from(new Uint8Array(signature));
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-  }
-
-  private async makePrivateRequest(
-    endpoint: string, 
-    method: 'GET' | 'POST' | 'DELETE' = 'GET', 
-    params: Record<string, any> = {}
-  ): Promise<any> {
-    await this.ensureInitialized();
-    
-    const timestamp = Date.now();
-    const requestParams = { ...params, timestamp };
-    
-    const signature = await this.createSignature(requestParams);
-    const finalParams = { ...requestParams, signature };
-
-    const headers: HeadersInit = {
-      'X-MEXC-APIKEY': this.apiKey,
-      'Content-Type': 'application/json'
-    };
-
-    let url = `${this.baseUrl}${endpoint}`;
-    let body: string | undefined;
-
-    if (method === 'GET') {
-      const query = new URLSearchParams();
-      Object.keys(finalParams).forEach(key => {
-        query.append(key, finalParams[key].toString());
-      });
-      url += `?${query.toString()}`;
-    } else {
-      body = JSON.stringify(finalParams);
-    }
-
-    const response = await fetch(url, {
-      method,
-      headers,
-      body
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(`MEXC API Error: ${response.status} - ${errorData.msg || response.statusText}`);
-    }
-
-    return response.json();
-  }
+  private httpClient = new MexcHttpClient();
 
   async getAccountInfo(): Promise<AccountInfo> {
-    return this.makePrivateRequest('/account');
+    return this.httpClient.makePrivateRequest('/account');
   }
 
   async placeOrder(orderRequest: OrderRequest): Promise<MexcOrder> {
@@ -165,11 +65,11 @@ export class MexcPrivateService {
       params.timeInForce = 'GTC';
     }
 
-    return this.makePrivateRequest('/order', 'POST', params);
+    return this.httpClient.makePrivateRequest('/order', 'POST', params);
   }
 
   async cancelOrder(symbol: string, orderId: string): Promise<any> {
-    return this.makePrivateRequest('/order', 'DELETE', {
+    return this.httpClient.makePrivateRequest('/order', 'DELETE', {
       symbol,
       orderId
     });
@@ -180,25 +80,24 @@ export class MexcPrivateService {
     if (symbol) {
       params.symbol = symbol;
     }
-    return this.makePrivateRequest('/openOrders', 'GET', params);
+    return this.httpClient.makePrivateRequest('/openOrders', 'GET', params);
   }
 
   async getAllOrders(symbol: string, limit: number = 500): Promise<MexcOrder[]> {
-    return this.makePrivateRequest('/allOrders', 'GET', {
+    return this.httpClient.makePrivateRequest('/allOrders', 'GET', {
       symbol,
       limit
     });
   }
 
   async getOrderStatus(symbol: string, orderId: string): Promise<MexcOrder> {
-    return this.makePrivateRequest('/order', 'GET', {
+    return this.httpClient.makePrivateRequest('/order', 'GET', {
       symbol,
       orderId
     });
   }
 
   static async isConfigured(): Promise<boolean> {
-    const keys = await ApiKeyManager.getApiKeys();
-    return !!(keys?.mexc.apiKey && keys?.mexc.secretKey);
+    return MexcAuth.isConfigured();
   }
 }

@@ -1,8 +1,8 @@
 
 import { MarketData, StrategyConfig, StrategyResult } from '@/types/strategy';
-import { WorkerPool } from './WorkerPool';
-import { DataManager } from './DataManager';
-import { PerformanceAnalyzer } from './PerformanceAnalyzer';
+import { RobustWorkerManager, WorkerTask } from './RobustWorkerManager';
+import { DatabaseSingleton } from './DatabaseSingleton';
+import { FinancialMetrics } from './FinancialMetrics';
 
 export interface BacktestConfig {
   symbol: string;
@@ -17,22 +17,26 @@ export interface BacktestConfig {
 }
 
 export interface BacktestProgress {
-  phase: 'loading' | 'processing' | 'analyzing' | 'complete';
+  phase: 'loading' | 'processing' | 'analyzing' | 'complete' | 'error';
   progress: number;
   message: string;
   strategyProgress?: Record<string, number>;
+  error?: string;
 }
 
 export class BacktestEngine {
-  private workerPool: WorkerPool;
-  private dataManager: DataManager;
-  private performanceAnalyzer: PerformanceAnalyzer;
+  private workerManager: RobustWorkerManager;
+  private database: DatabaseSingleton;
   private progressCallback?: (progress: BacktestProgress) => void;
+  private isRunning = false;
 
   constructor() {
-    this.workerPool = new WorkerPool();
-    this.dataManager = new DataManager();
-    this.performanceAnalyzer = new PerformanceAnalyzer();
+    this.workerManager = new RobustWorkerManager({
+      maxWorkers: Math.min(navigator.hardwareConcurrency || 4, 6),
+      timeout: 60000, // 60 seconds
+      fallbackToMainThread: true
+    });
+    this.database = DatabaseSingleton.getInstance();
   }
 
   setProgressCallback(callback: (progress: BacktestProgress) => void) {
@@ -46,68 +50,75 @@ export class BacktestEngine {
   }
 
   async runBacktest(config: BacktestConfig): Promise<StrategyResult[]> {
+    if (this.isRunning) {
+      throw new Error('Backtest already running');
+    }
+
+    this.isRunning = true;
+
     try {
-      // Phase 1: Load and prepare data
+      // Phase 1: Load and validate data
       this.updateProgress({
         phase: 'loading',
         progress: 0,
         message: 'Loading market data...'
       });
 
-      const marketData = await this.dataManager.loadMarketData(
-        config.symbol,
-        config.startDate,
-        config.endDate,
-        config.timeframe
-      );
+      const marketData = await this.loadMarketData(config);
+      
+      if (marketData.length === 0) {
+        throw new Error('No market data available for the specified period');
+      }
 
       this.updateProgress({
         phase: 'loading',
-        progress: 50,
-        message: 'Preprocessing data...'
+        progress: 30,
+        message: `Loaded ${marketData.length} data points`
       });
 
-      const processedData = await this.dataManager.preprocessData(marketData);
+      // Validate data quality
+      const validatedData = await this.validateAndCleanData(marketData);
+      
+      this.updateProgress({
+        phase: 'loading',
+        progress: 60,
+        message: 'Data validation complete'
+      });
 
-      // Phase 2: Run strategies in parallel
+      // Phase 2: Execute strategies
       this.updateProgress({
         phase: 'processing',
         progress: 0,
-        message: 'Running strategies...',
-        strategyProgress: {}
+        message: 'Executing strategies...'
       });
 
-      const results = await this.runStrategiesParallel(config.strategies, processedData);
+      const results = await this.executeStrategies(config.strategies, validatedData);
 
-      // Phase 3: Advanced analytics
-      if (config.enableMonteCarlo) {
+      // Phase 3: Advanced analytics (if enabled)
+      let enhancedResults = results;
+
+      if (config.enableMonteCarlo || config.enableWalkForward) {
         this.updateProgress({
           phase: 'analyzing',
           progress: 0,
-          message: 'Running Monte Carlo simulations...'
+          message: 'Running advanced analytics...'
         });
 
-        await this.runMonteCarloAnalysis(results, config.monteCarloRuns || 1000);
+        enhancedResults = await this.runAdvancedAnalytics(
+          results, 
+          validatedData, 
+          config
+        );
       }
 
-      if (config.enableWalkForward) {
-        this.updateProgress({
-          phase: 'analyzing',
-          progress: 50,
-          message: 'Performing walk-forward analysis...'
-        });
-
-        await this.runWalkForwardAnalysis(config.strategies, processedData);
-      }
-
-      // Phase 4: Final performance analysis
+      // Phase 4: Final enhancements
       this.updateProgress({
         phase: 'analyzing',
         progress: 80,
-        message: 'Calculating performance metrics...'
+        message: 'Calculating financial metrics...'
       });
 
-      const enhancedResults = await this.performanceAnalyzer.enhanceResults(results, processedData);
+      const finalResults = this.enhanceWithFinancialMetrics(enhancedResults, validatedData);
 
       this.updateProgress({
         phase: 'complete',
@@ -115,75 +126,213 @@ export class BacktestEngine {
         message: 'Backtest completed successfully!'
       });
 
-      return enhancedResults;
+      return finalResults;
 
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      
+      this.updateProgress({
+        phase: 'error',
+        progress: 0,
+        message: 'Backtest failed',
+        error: errorMessage
+      });
+
       console.error('Backtest failed:', error);
       throw error;
+    } finally {
+      this.isRunning = false;
     }
   }
 
-  private async runStrategiesParallel(
+  private async loadMarketData(config: BacktestConfig): Promise<MarketData[]> {
+    try {
+      return await this.database.loadMarketData(
+        config.symbol,
+        config.startDate,
+        config.endDate,
+        config.timeframe
+      );
+    } catch (error) {
+      console.error('Failed to load market data:', error);
+      throw new Error('Failed to load market data. Please check your parameters and try again.');
+    }
+  }
+
+  private async validateAndCleanData(data: MarketData[]): Promise<MarketData[]> {
+    const task: WorkerTask = {
+      id: 'data_validation',
+      type: 'data_processing',
+      data: {
+        operation: 'data_cleaning',
+        data
+      }
+    };
+
+    try {
+      const results = await this.workerManager.executeTasks([task]);
+      return results[0].data;
+    } catch (error) {
+      console.warn('Data validation failed, using original data:', error);
+      return data;
+    }
+  }
+
+  private async executeStrategies(
     strategies: StrategyConfig[],
     data: MarketData[]
   ): Promise<StrategyResult[]> {
-    const tasks = strategies.map((strategy, index) => ({
-      id: `strategy_${index}`,
-      type: 'strategy' as const,
-      data: { strategy, marketData: data }
+    const tasks: WorkerTask[] = strategies.map((strategy, index) => ({
+      id: `strategy_${strategy.id}_${index}`,
+      type: 'strategy',
+      data: { strategy, marketData: data },
+      priority: 1
     }));
 
-    const results = await this.workerPool.executeTasks(tasks, (progress) => {
-      this.updateProgress({
-        phase: 'processing',
-        progress: progress.overall,
-        message: `Processing strategies... ${Math.round(progress.overall)}%`,
-        strategyProgress: progress.individual
-      });
-    });
+    return new Promise((resolve, reject) => {
+      const results: StrategyResult[] = [];
+      let completed = 0;
 
-    return results.map(result => result.data);
+      this.workerManager.executeTasks(tasks, (progress) => {
+        this.updateProgress({
+          phase: 'processing',
+          progress: progress.overall,
+          message: `Processing strategies... ${Math.round(progress.overall)}%`,
+          strategyProgress: progress.individual
+        });
+      }).then(taskResults => {
+        const strategyResults = taskResults.map(result => result.data);
+        resolve(strategyResults);
+      }).catch(reject);
+    });
   }
 
-  private async runMonteCarloAnalysis(
+  private async runAdvancedAnalytics(
     results: StrategyResult[],
-    runs: number
-  ): Promise<void> {
-    const tasks = [{
-      id: 'monte_carlo',
-      type: 'monte_carlo' as const,
-      data: { results, runs }
-    }];
+    data: MarketData[],
+    config: BacktestConfig
+  ): Promise<StrategyResult[]> {
+    const tasks: WorkerTask[] = [];
 
-    await this.workerPool.executeTasks(tasks, (progress) => {
-      this.updateProgress({
-        phase: 'analyzing',
-        progress: progress.overall * 0.5,
-        message: `Monte Carlo simulation: ${Math.round(progress.overall)}%`
+    if (config.enableMonteCarlo) {
+      tasks.push({
+        id: 'monte_carlo',
+        type: 'monte_carlo',
+        data: {
+          results,
+          runs: config.monteCarloRuns || 1000
+        },
+        priority: 2
       });
+    }
+
+    if (config.enableWalkForward) {
+      tasks.push({
+        id: 'walk_forward',
+        type: 'walk_forward',
+        data: {
+          strategies: config.strategies,
+          marketData: data
+        },
+        priority: 2
+      });
+    }
+
+    if (tasks.length === 0) {
+      return results;
+    }
+
+    try {
+      const analyticsResults = await this.workerManager.executeTasks(tasks, (progress) => {
+        this.updateProgress({
+          phase: 'analyzing',
+          progress: progress.overall * 0.8, // Reserve 20% for final calculations
+          message: `Advanced analytics: ${Math.round(progress.overall)}%`
+        });
+      });
+
+      // Merge analytics results with strategy results
+      const enhancedResults = results.map((result, index) => ({
+        ...result,
+        analytics: {
+          monteCarlo: analyticsResults.find(r => r.id === 'monte_carlo')?.data,
+          walkForward: analyticsResults.find(r => r.id === 'walk_forward')?.data
+        }
+      }));
+
+      return enhancedResults;
+    } catch (error) {
+      console.warn('Advanced analytics failed, returning basic results:', error);
+      return results;
+    }
+  }
+
+  private enhanceWithFinancialMetrics(
+    results: StrategyResult[],
+    data: MarketData[]
+  ): StrategyResult[] {
+    return results.map(result => {
+      try {
+        const financialMetrics = FinancialMetrics.calculateAllMetrics(result.signals, data);
+        
+        return {
+          ...result,
+          performance: {
+            ...result.performance,
+            ...financialMetrics,
+            // Ensure backward compatibility
+            totalReturn: financialMetrics.totalReturn * 100,
+            winRate: financialMetrics.winRate,
+            sharpeRatio: financialMetrics.sharpeRatio,
+            maxDrawdown: financialMetrics.maxDrawdown * 100,
+            totalTrades: result.signals.length
+          }
+        };
+      } catch (error) {
+        console.error('Failed to calculate financial metrics for strategy:', error);
+        return result;
+      }
     });
   }
 
-  private async runWalkForwardAnalysis(
-    strategies: StrategyConfig[],
-    data: MarketData[]
-  ): Promise<void> {
-    const tasks = [{
-      id: 'walk_forward',
-      type: 'walk_forward' as const,
-      data: { strategies, marketData: data }
-    }];
+  async getEngineStats() {
+    const workerStats = this.workerManager.getStats();
+    const cacheStats = await this.database.getCacheStats();
 
-    await this.workerPool.executeTasks(tasks, (progress) => {
-      this.updateProgress({
-        phase: 'analyzing',
-        progress: 50 + (progress.overall * 0.3),
-        message: `Walk-forward analysis: ${Math.round(progress.overall)}%`
-      });
-    });
+    return {
+      workers: workerStats,
+      cache: cacheStats,
+      isRunning: this.isRunning,
+      memoryUsage: this.getMemoryUsage()
+    };
+  }
+
+  private getMemoryUsage() {
+    if ('memory' in performance) {
+      const memory = (performance as any).memory;
+      return {
+        used: Math.round(memory.usedJSHeapSize / 1024 / 1024),
+        total: Math.round(memory.totalJSHeapSize / 1024 / 1024),
+        limit: Math.round(memory.jsHeapSizeLimit / 1024 / 1024)
+      };
+    }
+    return null;
+  }
+
+  async cleanup() {
+    if (this.isRunning) {
+      console.warn('Attempting to cleanup while backtest is running');
+    }
+
+    try {
+      this.workerManager.terminate();
+      await this.database.clearExpiredCache();
+    } catch (error) {
+      console.error('Cleanup failed:', error);
+    }
   }
 
   dispose() {
-    this.workerPool.terminate();
+    this.cleanup();
   }
 }

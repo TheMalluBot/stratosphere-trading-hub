@@ -265,7 +265,7 @@ export class MonteCarloEngine {
     return {
       totalReturn,
       maxDrawdown,
-      sharpe Ratio,
+      sharpeRatio,
       winRate: (wins / returns.length) * 100,
       volatility: annualizedVolatility,
       avgReturn: annualizedReturn

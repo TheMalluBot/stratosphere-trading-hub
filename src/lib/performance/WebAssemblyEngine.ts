@@ -1,4 +1,3 @@
-
 // Enhanced WebAssembly engine for high-performance calculations
 export class WebAssemblyEngine {
   private wasmModule: any = null;
@@ -370,6 +369,16 @@ export class WebAssemblyEngine {
       var: this.wasmModule.calculateVaR(returnsArray, confidenceLevel),
       expectedShortfall: this.wasmModule.calculateES(returnsArray, confidenceLevel)
     };
+  }
+
+  // Add the missing calculateVaR method as a direct interface
+  calculateVaR(returns: number[], confidenceLevel: number = 0.95): number {
+    if (!this.initialized || !this.wasmModule) {
+      throw new Error('WASM engine not initialized');
+    }
+    
+    const returnsArray = new Float32Array(returns);
+    return this.wasmModule.calculateVaR(returnsArray, confidenceLevel);
   }
 
   isInitialized(): boolean {

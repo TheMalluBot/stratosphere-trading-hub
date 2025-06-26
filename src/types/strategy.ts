@@ -44,6 +44,7 @@ export interface StrategyResult {
     maxDrawdown: number;
     totalTrades: number;
   } & EnhancedPerformance;
+  metadata?: Record<string, any>;
 }
 
 export interface MarketData {

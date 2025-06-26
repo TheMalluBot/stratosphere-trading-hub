@@ -24,7 +24,11 @@ export class RobustWorkerManager {
   private config: Required<WorkerConfig>;
   private isSupported: boolean;
   private taskQueue: WorkerTask[] = [];
-  private activePromises: Map<string, { resolve: Function; reject: Function; timeout: NodeJS.Timeout }> = new Map();
+  private activePromises: Map<string, { 
+    resolve: (value: any) => void; 
+    reject: (reason: any) => void; 
+    timeout: NodeJS.Timeout | null;
+  }> = new Map();
 
   constructor(config: WorkerConfig = {}) {
     this.config = {
@@ -107,7 +111,9 @@ export class RobustWorkerManager {
       const promise = this.activePromises.get(id);
       if (!promise) return;
 
-      clearTimeout(promise.timeout);
+      if (promise.timeout) {
+        clearTimeout(promise.timeout);
+      }
       this.activePromises.delete(id);
 
       // Free up the worker
@@ -174,7 +180,9 @@ export class RobustWorkerManager {
       
       const promise = this.activePromises.get(task.id);
       if (promise) {
-        clearTimeout(promise.timeout);
+        if (promise.timeout) {
+          clearTimeout(promise.timeout);
+        }
         this.activePromises.delete(task.id);
         
         if (this.config.fallbackToMainThread) {
@@ -251,13 +259,13 @@ export class RobustWorkerManager {
     const worker = this.availableWorkers.pop();
     if (!worker) {
       // Add to queue if no workers available
-      return new Promise((resolve, reject) => {
+      return new Promise<any>((resolve, reject) => {
         this.taskQueue.push(task);
-        this.activePromises.set(task.id, { resolve, reject, timeout: null as any });
+        this.activePromises.set(task.id, { resolve, reject, timeout: null });
       });
     }
 
-    return new Promise((resolve, reject) => {
+    return new Promise<any>((resolve, reject) => {
       const timeout = setTimeout(() => {
         this.activePromises.delete(task.id);
         this.handleWorkerError(worker);

@@ -102,3 +102,5 @@ export class MexcService {
     }
   }
 }
+
+export const mexcService = new MexcService();

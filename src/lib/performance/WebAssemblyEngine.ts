@@ -377,8 +377,7 @@ export class WebAssemblyEngine {
       throw new Error('WASM engine not initialized');
     }
     
-    const returnsArray = new Float32Array(returns);
-    return this.wasmModule.calculateVaR(returnsArray, confidenceLevel);
+    return this.wasmModule.calculateVaR(returns, confidenceLevel);
   }
 
   isInitialized(): boolean {

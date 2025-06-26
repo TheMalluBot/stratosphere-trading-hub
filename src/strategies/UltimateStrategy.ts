@@ -60,6 +60,7 @@ export class UltimateStrategy {
         signals.push({
           timestamp: marketData[i].timestamp,
           type: 'BUY',
+          strength: bullishScore,
           price: marketData[i].close,
           confidence: bullishScore,
           reason: `Strong bullish signal (Score: ${bullishScore.toFixed(2)})`
@@ -68,6 +69,7 @@ export class UltimateStrategy {
         signals.push({
           timestamp: marketData[i].timestamp,
           type: 'SELL',
+          strength: bearishScore,
           price: marketData[i].close,
           confidence: bearishScore,
           reason: `Strong bearish signal (Score: ${bearishScore.toFixed(2)})`
@@ -155,6 +157,9 @@ export class UltimateStrategy {
     let totalReturn = 0;
     let wins = 0;
     let losses = 0;
+    let maxDrawdown = 0;
+    let peak = 1;
+    let equity = 1;
 
     for (let i = 0; i < signals.length - 1; i += 2) {
       const entry = signals[i];
@@ -166,15 +171,22 @@ export class UltimateStrategy {
           : (entry.price - exit.price) / entry.price;
         
         totalReturn += returnPct;
+        equity *= (1 + returnPct);
+        
+        if (equity > peak) peak = equity;
+        const drawdown = (peak - equity) / peak;
+        if (drawdown > maxDrawdown) maxDrawdown = drawdown;
+        
         if (returnPct > 0) wins++; else losses++;
       }
     }
 
     return {
       totalReturn: totalReturn * 100,
-      winRate: wins / (wins + losses) * 100,
+      winRate: wins / (wins + losses || 1) * 100,
       totalTrades: signals.length,
-      sharpeRatio: totalReturn / Math.sqrt(0.16)
+      sharpeRatio: totalReturn / Math.sqrt(0.16),
+      maxDrawdown: maxDrawdown * 100
     };
   }
 }

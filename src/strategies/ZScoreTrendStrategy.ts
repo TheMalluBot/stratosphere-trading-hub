@@ -39,6 +39,7 @@ export class ZScoreTrendStrategy {
         signals.push({
           timestamp: marketData[i].timestamp,
           type: 'SELL',
+          strength: Math.min(Math.abs(zScore) / threshold, 1),
           price: currentPrice,
           confidence: Math.min(Math.abs(zScore) / threshold, 1),
           reason: `Overbought condition (Z-Score: ${zScore.toFixed(2)})`
@@ -47,6 +48,7 @@ export class ZScoreTrendStrategy {
         signals.push({
           timestamp: marketData[i].timestamp,
           type: 'BUY',
+          strength: Math.min(Math.abs(zScore) / threshold, 1),
           price: currentPrice,
           confidence: Math.min(Math.abs(zScore) / threshold, 1),
           reason: `Oversold condition (Z-Score: ${zScore.toFixed(2)})`
@@ -70,6 +72,9 @@ export class ZScoreTrendStrategy {
     let totalReturn = 0;
     let wins = 0;
     let losses = 0;
+    let maxDrawdown = 0;
+    let peak = 1;
+    let equity = 1;
 
     for (let i = 0; i < signals.length - 1; i += 2) {
       const entry = signals[i];
@@ -81,15 +86,22 @@ export class ZScoreTrendStrategy {
           : (entry.price - exit.price) / entry.price;
         
         totalReturn += returnPct;
+        equity *= (1 + returnPct);
+        
+        if (equity > peak) peak = equity;
+        const drawdown = (peak - equity) / peak;
+        if (drawdown > maxDrawdown) maxDrawdown = drawdown;
+        
         if (returnPct > 0) wins++; else losses++;
       }
     }
 
     return {
       totalReturn: totalReturn * 100,
-      winRate: wins / (wins + losses) * 100,
+      winRate: wins / (wins + losses || 1) * 100,
       totalTrades: signals.length,
-      sharpeRatio: totalReturn / Math.sqrt(0.16)
+      sharpeRatio: totalReturn / Math.sqrt(0.16),
+      maxDrawdown: maxDrawdown * 100
     };
   }
 }

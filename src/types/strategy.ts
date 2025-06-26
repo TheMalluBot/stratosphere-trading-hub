@@ -13,6 +13,8 @@ export interface StrategySignal {
   type: 'BUY' | 'SELL' | 'HOLD' | 'EXIT';
   strength: number; // 0-1 confidence level
   price: number;
+  confidence?: number; // Optional confidence score
+  reason?: string; // Optional reason for the signal
   metadata?: Record<string, any>;
 }
 

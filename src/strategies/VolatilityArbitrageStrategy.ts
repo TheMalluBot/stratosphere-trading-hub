@@ -36,6 +36,7 @@ export class VolatilityArbitrageStrategy {
         signals.push({
           timestamp: marketData[i].timestamp,
           type: 'BUY',
+          strength: Math.min(Math.abs(volSpread) / threshold, 1),
           price: marketData[i].close,
           confidence: Math.min(Math.abs(volSpread) / threshold, 1),
           reason: `Low volatility opportunity (Spread: ${volSpread.toFixed(3)})`
@@ -44,6 +45,7 @@ export class VolatilityArbitrageStrategy {
         signals.push({
           timestamp: marketData[i].timestamp,
           type: 'SELL',
+          strength: Math.min(Math.abs(volSpread) / threshold, 1),
           price: marketData[i].close,
           confidence: Math.min(Math.abs(volSpread) / threshold, 1),
           reason: `High volatility opportunity (Spread: ${volSpread.toFixed(3)})`
@@ -112,6 +114,9 @@ export class VolatilityArbitrageStrategy {
     let totalReturn = 0;
     let wins = 0;
     let losses = 0;
+    let maxDrawdown = 0;
+    let peak = 1;
+    let equity = 1;
 
     for (let i = 0; i < signals.length - 1; i += 2) {
       const entry = signals[i];
@@ -123,15 +128,22 @@ export class VolatilityArbitrageStrategy {
           : (entry.price - exit.price) / entry.price;
         
         totalReturn += returnPct;
+        equity *= (1 + returnPct);
+        
+        if (equity > peak) peak = equity;
+        const drawdown = (peak - equity) / peak;
+        if (drawdown > maxDrawdown) maxDrawdown = drawdown;
+        
         if (returnPct > 0) wins++; else losses++;
       }
     }
 
     return {
       totalReturn: totalReturn * 100,
-      winRate: wins / (wins + losses) * 100,
+      winRate: wins / (wins + losses || 1) * 100,
       totalTrades: signals.length,
-      sharpeRatio: totalReturn / Math.sqrt(0.16)
+      sharpeRatio: totalReturn / Math.sqrt(0.16),
+      maxDrawdown: maxDrawdown * 100
     };
   }
 }

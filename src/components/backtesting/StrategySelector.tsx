@@ -28,6 +28,24 @@ export const strategies = [
     description: "Two Sigma/Citadel style machine learning momentum with 15+ features",
     category: "elite"
   },
+  {
+    value: "pairs-trading",
+    label: "👥 Pairs Trading",
+    description: "Cointegration-based pairs trading with dynamic hedge ratios",
+    category: "elite"
+  },
+  {
+    value: "volatility-arbitrage",
+    label: "📈 Volatility Arbitrage",
+    description: "Options implied vs realized volatility trading with GARCH models",
+    category: "elite"
+  },
+  {
+    value: "regime-detection",
+    label: "🎯 Regime Detection",
+    description: "Market regime classification with adaptive strategy selection",
+    category: "elite"
+  },
   // Original Strategies
   {
     value: "linear-regression",
@@ -210,6 +228,27 @@ export const StrategySelector = ({ selectedStrategy, setSelectedStrategy }: Stra
                     <div>• 15+ engineered technical features</div>
                     <div>• Market regime detection algorithms</div>
                     <div>• Ensemble prediction with confidence scoring</div>
+                  </>
+                )}
+                {selectedStrategy === "pairs-trading" && (
+                  <>
+                    <div>• Cointegration testing with Engle-Granger</div>
+                    <div>• Dynamic hedge ratio calculation</div>
+                    <div>• Mean reversion signal optimization</div>
+                  </>
+                )}
+                {selectedStrategy === "volatility-arbitrage" && (
+                  <>
+                    <div>• Implied vs realized volatility analysis</div>
+                    <div>• GARCH volatility forecasting</div>
+                    <div>• Options pricing model integration</div>
+                  </>
+                )}
+                {selectedStrategy === "regime-detection" && (
+                  <>
+                    <div>• Hidden Markov Model regime classification</div>
+                    <div>• Adaptive strategy parameter adjustment</div>
+                    <div>• Real-time regime transition detection</div>
                   </>
                 )}
               </div>

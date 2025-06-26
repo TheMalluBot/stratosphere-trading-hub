@@ -1,4 +1,3 @@
-
 import { MarketData, StrategyResult } from '@/types/strategy';
 
 // Import all strategies including the new elite ones
@@ -11,6 +10,9 @@ import { UltimateStrategy } from '@/strategies/UltimateStrategy';
 import { StatisticalArbitrageStrategy } from '@/strategies/StatisticalArbitrageStrategy';
 import { CrossAssetArbitrageStrategy } from '@/strategies/CrossAssetArbitrageStrategy';
 import { MLMomentumStrategy } from '@/strategies/MLMomentumStrategy';
+import { PairsTradingStrategy } from '@/strategies/PairsTradingStrategy';
+import { VolatilityArbitrageStrategy } from '@/strategies/VolatilityArbitrageStrategy';
+import { RegimeDetectionStrategy } from '@/strategies/RegimeDetectionStrategy';
 
 interface WorkerMessage {
   id: string;
@@ -85,6 +87,41 @@ class StrategyWorker {
         featureWindow: 20,
         predictionHorizon: 5,
         confidenceThreshold: 0.6
+      }
+    }));
+    
+    // New advanced strategies
+    this.strategies.set('pairs-trading', new PairsTradingStrategy({
+      ...defaultConfig,
+      name: 'Pairs Trading',
+      description: 'Cointegration-based pairs trading with dynamic hedge ratios',
+      parameters: {
+        lookbackPeriod: 60,
+        cointegrationThreshold: 0.05,
+        entryZScore: 2.0,
+        exitZScore: 0.5
+      }
+    }));
+    
+    this.strategies.set('volatility-arbitrage', new VolatilityArbitrageStrategy({
+      ...defaultConfig,
+      name: 'Volatility Arbitrage',
+      description: 'Options implied volatility vs realized volatility arbitrage',
+      parameters: {
+        lookbackPeriod: 30,
+        volThreshold: 0.05,
+        sigmaThreshold: 2.0
+      }
+    }));
+    
+    this.strategies.set('regime-detection', new RegimeDetectionStrategy({
+      ...defaultConfig,
+      name: 'Regime Detection',
+      description: 'Market regime classification with adaptive strategy selection',
+      parameters: {
+        lookbackPeriod: 50,
+        regimeThreshold: 0.6,
+        transitionSensitivity: 0.3
       }
     }));
   }

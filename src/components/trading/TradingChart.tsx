@@ -1,215 +1,302 @@
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from "recharts";
-import { TrendingUp, BarChart3, Wifi, WifiOff, Settings, Maximize2 } from "lucide-react";
-import { useRealTimePrice } from "@/hooks/useRealTimePrice";
-import { useState, useEffect } from "react";
+import { useEffect, useState, useRef } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area } from 'recharts';
+import { TrendingUp, TrendingDown, Activity, Zap, Target, AlertTriangle } from 'lucide-react';
+import { analysisEngine } from '@/lib/analysis/AnalysisEngine';
+import { useCryptoData } from '@/hooks/useCryptoData';
 
 interface TradingChartProps {
-  symbol?: string;
+  symbol: string;
 }
 
-interface ChartDataPoint {
-  time: string;
-  timestamp: number;
-  price: number;
-  open: number;
-  high: number;
-  low: number;
-  close: number;
-  volume: number;
-  ma20: number;
-  ma50: number;
-  rsi: number;
-  macd: number;
-  signal: number;
-}
+const TradingChart = ({ symbol }: TradingChartProps) => {
+  const { data: marketData, isLoading } = useCryptoData(symbol);
+  const [analysisResult, setAnalysisResult] = useState<any>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [chartType, setChartType] = useState<'line' | 'area' | 'candlestick'>('area');
+  const [selectedIndicator, setSelectedIndicator] = useState<'price' | 'rsi' | 'macd' | 'volume'>('price');
+  const analysisRef = useRef<any>(null);
 
-const TradingChart = ({ symbol = "BTCUSDT" }: TradingChartProps) => {
-  const { priceData, isConnected } = useRealTimePrice(symbol);
-  const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
-  const [chartType, setChartType] = useState<'line' | 'area'>('area');
-  const [showIndicators, setShowIndicators] = useState(true);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  // Calculate technical indicators
-  const calculateSMA = (data: number[], period: number): number => {
-    if (data.length < period) return data[data.length - 1] || 0;
-    const sum = data.slice(-period).reduce((a, b) => a + b, 0);
-    return sum / period;
-  };
-
-  const calculateRSI = (prices: number[], period: number = 14): number => {
-    if (prices.length < period + 1) return 50;
-    
-    let gains = 0, losses = 0;
-    for (let i = prices.length - period; i < prices.length; i++) {
-      const change = prices[i] - prices[i - 1];
-      if (change > 0) gains += change;
-      else losses -= change;
-    }
-    
-    const avgGain = gains / period;
-    const avgLoss = losses / period;
-    if (avgLoss === 0) return 100;
-    const rs = avgGain / avgLoss;
-    return 100 - (100 / (1 + rs));
-  };
-
-  // Generate realistic OHLCV data with technical indicators
   useEffect(() => {
-    const generateAdvancedData = () => {
-      try {
-        setIsLoading(true);
-        setError(null);
+    if (marketData && marketData.length >= 50) {
+      runAnalysis();
+    }
+  }, [marketData, symbol]);
+
+  const runAnalysis = async () => {
+    if (!marketData || marketData.length < 50) return;
+    
+    setIsAnalyzing(true);
+    try {
+      // Convert market data to analysis format
+      const analysisData = marketData.map(item => ({
+        timestamp: new Date(item.date).getTime(),
+        open: item.open || item.close,
+        high: item.high || item.close * 1.02,
+        low: item.low || item.close * 0.98,
+        close: item.close,
+        volume: item.volume || Math.random() * 1000000
+      }));
+
+      const result = await analysisEngine.analyzeMarketData(analysisData);
+      setAnalysisResult(result);
+      analysisRef.current = result;
+      
+      console.log('📊 Analysis completed:', {
+        patterns: result.patterns.chart.length,
+        signals: result.signals,
+        trend: result.trend
+      });
+    } catch (error) {
+      console.error('Analysis failed:', error);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const getChartData = () => {
+    if (!marketData) return [];
+    
+    return marketData.map((item, index) => {
+      const baseData = {
+        date: item.date,
+        price: item.close,
+        volume: item.volume || Math.random() * 1000000,
+        timestamp: new Date(item.date).getTime()
+      };
+
+      // Add technical indicators if analysis is available
+      if (analysisResult && analysisResult.indicators) {
+        const indicators = analysisResult.indicators;
         
-        const data: ChartDataPoint[] = [];
-        let basePrice = priceData?.price || 45000;
-        const now = Date.now();
-        const prices: number[] = [];
-        
-        for (let i = 200; i >= 0; i--) {
-          const time = new Date(now - i * 60000);
-          
-          // Generate OHLC data with more realistic price movements
-          const volatility = (Math.random() - 0.5) * (basePrice * 0.02);
-          const trend = Math.sin(i / 50) * (basePrice * 0.01);
-          basePrice = Math.max(basePrice + trend + volatility, basePrice * 0.8);
-          
-          const open = i === 200 ? basePrice : data[data.length - 1]?.close || basePrice;
-          const priceRange = basePrice * 0.015;
-          const high = basePrice + Math.random() * priceRange;
-          const low = Math.max(basePrice - Math.random() * priceRange, basePrice * 0.95);
-          const close = low + Math.random() * (high - low);
-          
-          prices.push(close);
-          
-          // Calculate technical indicators with error handling
-          const ma20 = calculateSMA(prices, Math.min(20, prices.length));
-          const ma50 = calculateSMA(prices, Math.min(50, prices.length));
-          const rsi = calculateRSI(prices);
-          
-          // Simple MACD calculation
-          const ema12 = calculateSMA(prices, Math.min(12, prices.length));
-          const ema26 = calculateSMA(prices, Math.min(26, prices.length));
-          const macd = ema12 - ema26;
-          const signal = calculateSMA(prices.slice(-9).map(() => macd), Math.min(9, prices.length));
-          
-          data.push({
-            time: time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            timestamp: time.getTime(),
-            price: Number(close.toFixed(2)),
-            open: Number(open.toFixed(2)),
-            high: Number(high.toFixed(2)),
-            low: Number(low.toFixed(2)),
-            close: Number(close.toFixed(2)),
-            volume: Math.random() * 200 + 50,
-            ma20: Number(ma20.toFixed(2)),
-            ma50: Number(ma50.toFixed(2)),
-            rsi: Number(rsi.toFixed(2)),
-            macd: Number(macd.toFixed(4)),
-            signal: Number(signal.toFixed(4))
-          });
+        return {
+          ...baseData,
+          rsi: indicators.rsi[index] || null,
+          macd: indicators.macd.macd[index] || null,
+          signal: indicators.macd.signal[index] || null,
+          ema20: indicators.ema20[index] || null,
+          ema50: indicators.ema50[index] || null,
+          upperBB: indicators.bollingerBands.upper[index] || null,
+          lowerBB: indicators.bollingerBands.lower[index] || null,
+          middleBB: indicators.bollingerBands.middle[index] || null
+        };
+      }
+
+      return baseData;
+    });
+  };
+
+  const renderMainChart = () => {
+    const data = getChartData();
+    
+    switch (selectedIndicator) {
+      case 'rsi':
+        return (
+          <LineChart data={data}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+            <XAxis dataKey="date" stroke="#9CA3AF" />
+            <YAxis domain={[0, 100]} stroke="#9CA3AF" />
+            <Tooltip 
+              contentStyle={{ backgroundColor: '#1F2937', border: '1px solid #374151' }}
+              labelStyle={{ color: '#F3F4F6' }}
+            />
+            <Legend />
+            <Line type="monotone" dataKey="rsi" stroke="#8B5CF6" strokeWidth={2} dot={false} />
+            <Line type="monotone" dataKey={70} stroke="#EF4444" strokeDasharray="5 5" />
+            <Line type="monotone" dataKey={30} stroke="#10B981" strokeDasharray="5 5" />
+          </LineChart>
+        );
+      
+      case 'macd':
+        return (
+          <LineChart data={data}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+            <XAxis dataKey="date" stroke="#9CA3AF" />
+            <YAxis stroke="#9CA3AF" />
+            <Tooltip 
+              contentStyle={{ backgroundColor: '#1F2937', border: '1px solid #374151' }}
+              labelStyle={{ color: '#F3F4F6' }}
+            />
+            <Legend />
+            <Line type="monotone" dataKey="macd" stroke="#3B82F6" strokeWidth={2} dot={false} />
+            <Line type="monotone" dataKey="signal" stroke="#EF4444" strokeWidth={2} dot={false} />
+          </LineChart>
+        );
+      
+      case 'volume':
+        return (
+          <AreaChart data={data}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+            <XAxis dataKey="date" stroke="#9CA3AF" />
+            <YAxis stroke="#9CA3AF" />
+            <Tooltip 
+              contentStyle={{ backgroundColor: '#1F2937', border: '1px solid #374151' }}
+              labelStyle={{ color: '#F3F4F6' }}
+            />
+            <Area type="monotone" dataKey="volume" stroke="#8B5CF6" fill="#8B5CF6" fillOpacity={0.3} />
+          </AreaChart>
+        );
+      
+      default:
+        if (chartType === 'area') {
+          return (
+            <AreaChart data={data}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+              <XAxis dataKey="date" stroke="#9CA3AF" />
+              <YAxis stroke="#9CA3AF" />
+              <Tooltip 
+                contentStyle={{ backgroundColor: '#1F2937', border: '1px solid #374151' }}
+                labelStyle={{ color: '#F3F4F6' }}
+              />
+              <Legend />
+              <Area type="monotone" dataKey="price" stroke="#3B82F6" fill="#3B82F6" fillOpacity={0.3} />
+              {analysisResult && (
+                <>
+                  <Line type="monotone" dataKey="ema20" stroke="#10B981" strokeWidth={1} dot={false} />
+                  <Line type="monotone" dataKey="ema50" stroke="#F59E0B" strokeWidth={1} dot={false} />
+                  <Line type="monotone" dataKey="upperBB" stroke="#8B5CF6" strokeWidth={1} strokeDasharray="3 3" dot={false} />
+                  <Line type="monotone" dataKey="lowerBB" stroke="#8B5CF6" strokeWidth={1} strokeDasharray="3 3" dot={false} />
+                </>
+              )}
+            </AreaChart>
+          );
+        } else {
+          return (
+            <LineChart data={data}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+              <XAxis dataKey="date" stroke="#9CA3AF" />
+              <YAxis stroke="#9CA3AF" />
+              <Tooltip 
+                contentStyle={{ backgroundColor: '#1F2937', border: '1px solid #374151' }}
+                labelStyle={{ color: '#F3F4F6' }}
+              />
+              <Legend />
+              <Line type="monotone" dataKey="price" stroke="#3B82F6" strokeWidth={2} dot={false} />
+              {analysisResult && (
+                <>
+                  <Line type="monotone" dataKey="ema20" stroke="#10B981" strokeWidth={1} dot={false} />
+                  <Line type="monotone" dataKey="ema50" stroke="#F59E0B" strokeWidth={1} dot={false} />
+                </>
+              )}
+            </LineChart>
+          );
         }
-        
-        setChartData(data);
-      } catch (err) {
-        console.error('Error generating chart data:', err);
-        setError('Failed to generate chart data');
-      } finally {
-        setIsLoading(false);
-      }
-    };
+    }
+  };
 
-    generateAdvancedData();
+  const renderAnalysisInsights = () => {
+    if (!analysisResult) return null;
 
-    // Update data with real-time prices
-    const interval = setInterval(() => {
-      if (chartData.length > 0) {
-        setChartData(prev => {
-          try {
-            const newData = [...prev];
-            const lastPoint = newData[newData.length - 1];
-            const currentPrice = priceData?.price || lastPoint.close;
-            const priceChange = (Math.random() - 0.5) * (currentPrice * 0.01);
-            const newPrice = Math.max(currentPrice + priceChange, currentPrice * 0.99);
-            
-            const newPoint: ChartDataPoint = {
-              time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-              timestamp: Date.now(),
-              price: Number(newPrice.toFixed(2)),
-              open: lastPoint.close,
-              high: Number((newPrice + Math.random() * (newPrice * 0.01)).toFixed(2)),
-              low: Number((newPrice - Math.random() * (newPrice * 0.01)).toFixed(2)),
-              close: Number(newPrice.toFixed(2)),
-              volume: Math.random() * 200 + 50,
-              ma20: Number((newPrice + (Math.random() - 0.5) * (newPrice * 0.02)).toFixed(2)),
-              ma50: Number((newPrice + (Math.random() - 0.5) * (newPrice * 0.03)).toFixed(2)),
-              rsi: Number((50 + (Math.random() - 0.5) * 40).toFixed(2)),
-              macd: Number(((Math.random() - 0.5) * 10).toFixed(4)),
-              signal: Number(((Math.random() - 0.5) * 8).toFixed(4))
-            };
-            
-            newData.push(newPoint);
-            if (newData.length > 200) newData.shift();
-            
-            return newData;
-          } catch (err) {
-            console.error('Error updating chart data:', err);
-            return prev;
-          }
-        });
-      }
-    }, 3000);
+    const { signals, trend, patterns } = analysisResult;
 
-    return () => clearInterval(interval);
-  }, [priceData, symbol]);
+    return (
+      <div className="grid gap-4 md:grid-cols-3 mt-4">
+        {/* Trading Signals */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Target className="w-4 h-4" />
+              Trading Signals
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {signals.buy && (
+                <Badge variant="default" className="bg-green-500/10 text-green-400 border-green-500/20">
+                  <TrendingUp className="w-3 h-3 mr-1" />
+                  BUY SIGNAL
+                </Badge>
+              )}
+              {signals.sell && (
+                <Badge variant="destructive" className="bg-red-500/10 text-red-400 border-red-500/20">
+                  <TrendingDown className="w-3 h-3 mr-1" />
+                  SELL SIGNAL
+                </Badge>
+              )}
+              {!signals.buy && !signals.sell && (
+                <Badge variant="secondary">
+                  <Activity className="w-3 h-3 mr-1" />
+                  HOLD
+                </Badge>
+              )}
+              <div className="text-xs text-muted-foreground mt-2">
+                Strength: {(signals.strength * 100).toFixed(0)}%
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
-  const currentPrice = chartData.length > 0 ? chartData[chartData.length - 1].close : 0;
-  const previousPrice = chartData.length > 1 ? chartData[chartData.length - 2].close : currentPrice;
-  const priceChange = currentPrice - previousPrice;
-  const priceChangePercent = previousPrice > 0 ? (priceChange / previousPrice) * 100 : 0;
+        {/* Trend Analysis */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Activity className="w-4 h-4" />
+              Trend Analysis
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <Badge 
+                variant="outline" 
+                className={
+                  trend.direction === 'bullish' ? 'text-green-400 border-green-500/20' :
+                  trend.direction === 'bearish' ? 'text-red-400 border-red-500/20' :
+                  'text-yellow-400 border-yellow-500/20'
+                }
+              >
+                {trend.direction.toUpperCase()}
+              </Badge>
+              <div className="text-xs text-muted-foreground">
+                <div>Strength: {(trend.strength * 100).toFixed(0)}%</div>
+                <div>Duration: {trend.duration} periods</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
-  const formatPrice = (value: number) => `$${value.toLocaleString()}`;
+        {/* Pattern Detection */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4" />
+              Patterns Detected
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-1">
+              {patterns.chart.length > 0 ? (
+                patterns.chart.slice(0, 2).map((pattern: any, index: number) => (
+                  <div key={index} className="text-xs">
+                    <Badge variant="outline" className="text-xs">
+                      {pattern.type.replace('_', ' ')}
+                    </Badge>
+                    <div className="text-muted-foreground mt-1">
+                      Confidence: {(pattern.confidence * 100).toFixed(0)}%
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-xs text-muted-foreground">
+                  No significant patterns detected
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  };
 
   if (isLoading) {
     return (
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <BarChart3 className="w-5 h-5" />
-            Loading Chart...
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="h-96 flex items-center justify-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (error) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <BarChart3 className="w-5 h-5" />
-            Chart Error
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="h-96 flex items-center justify-center">
-            <div className="text-center">
-              <p className="text-red-500 mb-2">{error}</p>
-              <Button onClick={() => window.location.reload()} variant="outline" size="sm">
-                Retry
-              </Button>
-            </div>
+        <CardContent className="flex items-center justify-center h-96">
+          <div className="flex items-center gap-2">
+            <Activity className="w-4 h-4 animate-pulse" />
+            Loading chart data...
           </div>
         </CardContent>
       </Card>
@@ -220,221 +307,63 @@ const TradingChart = ({ symbol = "BTCUSDT" }: TradingChartProps) => {
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <BarChart3 className="w-5 h-5" />
-              {symbol} Advanced Chart
+          <CardTitle className="flex items-center gap-2">
+            <TrendingUp className="w-5 h-5" />
+            {symbol} Advanced Chart
+            {isAnalyzing && (
               <div className="flex items-center gap-1">
-                {isConnected ? (
-                  <Wifi className="w-3 h-3 text-green-500" />
-                ) : (
-                  <WifiOff className="w-3 h-3 text-red-500" />
-                )}
-                <Badge variant="outline" className="text-xs bg-green-500/10 text-green-500">
-                  {isConnected ? 'LIVE' : 'DEMO'}
-                </Badge>
+                <Zap className="w-4 h-4 animate-pulse text-yellow-500" />
+                <span className="text-sm text-muted-foreground">Analyzing...</span>
               </div>
-            </CardTitle>
-            <CardDescription>
-              Professional trading chart with technical analysis
-            </CardDescription>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="flex gap-1">
-              {(['line', 'area'] as const).map((type) => (
-                <Button
-                  key={type}
-                  variant={chartType === type ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setChartType(type)}
-                  className="px-3"
-                >
-                  {type}
-                </Button>
-              ))}
-            </div>
+            )}
+          </CardTitle>
+          <div className="flex gap-2">
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setShowIndicators(!showIndicators)}
+              onClick={() => setSelectedIndicator(selectedIndicator === 'price' ? 'rsi' : 
+                                                 selectedIndicator === 'rsi' ? 'macd' : 
+                                                 selectedIndicator === 'macd' ? 'volume' : 'price')}
             >
-              <Settings className="w-4 h-4 mr-1" />
-              Indicators
+              {selectedIndicator.toUpperCase()}
             </Button>
-            <div className="text-right">
-              <div className="text-2xl font-bold">{formatPrice(currentPrice)}</div>
-              <div className={`flex items-center gap-1 ${priceChange >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                <TrendingUp className={`w-4 h-4 ${priceChange < 0 ? 'rotate-180' : ''}`} />
-                <span>
-                  {priceChange >= 0 ? '+' : ''}${priceChange.toFixed(2)} 
-                  ({priceChangePercent >= 0 ? '+' : ''}{priceChangePercent.toFixed(2)}%)
-                </span>
-              </div>
-            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setChartType(chartType === 'line' ? 'area' : 'line')}
+            >
+              {chartType === 'line' ? 'Area' : 'Line'}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={runAnalysis}
+              disabled={isAnalyzing || !marketData || marketData.length < 50}
+            >
+              <Zap className="w-4 h-4 mr-1" />
+              Analyze
+            </Button>
           </div>
         </div>
       </CardHeader>
       <CardContent>
-        <div className="h-96">
-          <ResponsiveContainer width="100%" height="100%">
-            {chartType === 'area' ? (
-              <AreaChart data={chartData}>
-                <defs>
-                  <linearGradient id="priceGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor={priceChange >= 0 ? "#22c55e" : "#ef4444"} stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor={priceChange >= 0 ? "#22c55e" : "#ef4444"} stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                <XAxis 
-                  dataKey="time" 
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fontSize: 11 }}
-                  interval="preserveStartEnd"
-                />
-                <YAxis 
-                  domain={['dataMin - 200', 'dataMax + 200']}
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fontSize: 11 }}
-                  tickFormatter={formatPrice}
-                  width={80}
-                />
-                <Tooltip 
-                  formatter={(value: any, name: string) => {
-                    if (name === 'close' || name === 'price') return [formatPrice(value), 'Price'];
-                    if (name === 'ma20') return [formatPrice(value), 'MA20'];
-                    if (name === 'ma50') return [formatPrice(value), 'MA50'];
-                    if (name === 'rsi') return [`${value}`, 'RSI'];
-                    return [value, name];
-                  }}
-                  labelStyle={{ color: 'hsl(var(--foreground))' }}
-                  contentStyle={{ 
-                    backgroundColor: 'hsl(var(--background))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '6px'
-                  }}
-                />
-                <Area 
-                  type="monotone" 
-                  dataKey="close" 
-                  stroke={priceChange >= 0 ? '#22c55e' : '#ef4444'}
-                  strokeWidth={2}
-                  fill="url(#priceGradient)"
-                  dot={false}
-                  activeDot={{ r: 4 }}
-                />
-                {showIndicators && (
-                  <>
-                    <Line 
-                      type="monotone" 
-                      dataKey="ma20" 
-                      stroke="#3b82f6"
-                      strokeWidth={1}
-                      dot={false}
-                      strokeDasharray="2 2"
-                    />
-                    <Line 
-                      type="monotone" 
-                      dataKey="ma50" 
-                      stroke="#f59e0b"
-                      strokeWidth={1}
-                      dot={false}
-                      strokeDasharray="4 2"
-                    />
-                  </>
-                )}
-              </AreaChart>
-            ) : (
-              <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                <XAxis 
-                  dataKey="time" 
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fontSize: 11 }}
-                  interval="preserveStartEnd"
-                />
-                <YAxis 
-                  domain={['dataMin - 200', 'dataMax + 200']}
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fontSize: 11 }}
-                  tickFormatter={formatPrice}
-                  width={80}
-                />
-                <Tooltip 
-                  formatter={(value: any, name: string) => {
-                    if (name === 'close' || name === 'price') return [formatPrice(value), 'Price'];
-                    if (name === 'ma20') return [formatPrice(value), 'MA20'];
-                    if (name === 'ma50') return [formatPrice(value), 'MA50'];
-                    return [value, name];
-                  }}
-                  labelStyle={{ color: 'hsl(var(--foreground))' }}
-                  contentStyle={{ 
-                    backgroundColor: 'hsl(var(--background))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '6px'
-                  }}
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="close" 
-                  stroke={priceChange >= 0 ? '#22c55e' : '#ef4444'}
-                  strokeWidth={2}
-                  dot={false}
-                  activeDot={{ r: 4 }}
-                />
-                {showIndicators && (
-                  <>
-                    <Line 
-                      type="monotone" 
-                      dataKey="ma20" 
-                      stroke="#3b82f6"
-                      strokeWidth={1}
-                      dot={false}
-                      strokeDasharray="2 2"
-                    />
-                    <Line 
-                      type="monotone" 
-                      dataKey="ma50" 
-                      stroke="#f59e0b"
-                      strokeWidth={1}
-                      dot={false}
-                      strokeDasharray="4 2"
-                    />
-                  </>
-                )}
-              </LineChart>
-            )}
-          </ResponsiveContainer>
-        </div>
+        <ResponsiveContainer width="100%" height={400}>
+          {renderMainChart()}
+        </ResponsiveContainer>
         
-        <div className="flex justify-center gap-4 mt-4 flex-wrap">
-          <Badge variant="outline" className="text-xs">
-            24h High: {formatPrice(Math.max(...chartData.map(d => d.high)))}
-          </Badge>
-          <Badge variant="outline" className="text-xs">
-            24h Low: {formatPrice(Math.min(...chartData.map(d => d.low)))}
-          </Badge>
-          <Badge variant="outline" className="text-xs">
-            Volume: {(chartData.reduce((sum, d) => sum + d.volume, 0) / 1000).toFixed(1)}K
-          </Badge>
-          {showIndicators && (
-            <>
-              <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-500">
-                MA20: {formatPrice(chartData[chartData.length - 1]?.ma20 || 0)}
-              </Badge>
-              <Badge variant="outline" className="text-xs bg-yellow-500/10 text-yellow-500">
-                MA50: {formatPrice(chartData[chartData.length - 1]?.ma50 || 0)}
-              </Badge>
-              <Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-500">
-                RSI: {chartData[chartData.length - 1]?.rsi.toFixed(1) || '50.0'}
-              </Badge>
-            </>
-          )}
-        </div>
+        {/* Signal Reasons */}
+        {analysisResult && analysisResult.signals.reasons.length > 0 && (
+          <div className="mt-4 p-3 bg-muted/50 rounded-lg">
+            <h4 className="text-sm font-semibold mb-2">Analysis Reasons:</h4>
+            <div className="text-xs text-muted-foreground space-y-1">
+              {analysisResult.signals.reasons.map((reason: string, index: number) => (
+                <div key={index}>• {reason}</div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {renderAnalysisInsights()}
       </CardContent>
     </Card>
   );

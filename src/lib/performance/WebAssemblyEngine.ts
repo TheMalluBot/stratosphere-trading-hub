@@ -1,3 +1,4 @@
+
 // Enhanced WebAssembly engine for high-performance calculations
 export class WebAssemblyEngine {
   private wasmModule: any = null;
@@ -240,7 +241,7 @@ export class WebAssemblyEngine {
       },
 
       // Value at Risk calculation
-      calculateVaR: (returns: Float32Array, confidenceLevel: number = 0.95): number => {
+      calculateVaR: (returns: number[], confidenceLevel: number = 0.95): number => {
         // Sort returns in ascending order
         const sortedReturns = Array.from(returns).sort((a, b) => a - b);
         const index = Math.floor((1 - confidenceLevel) * sortedReturns.length);
@@ -248,7 +249,7 @@ export class WebAssemblyEngine {
       },
 
       // Expected Shortfall (Conditional VaR)
-      calculateES: (returns: Float32Array, confidenceLevel: number = 0.95): number => {
+      calculateES: (returns: number[], confidenceLevel: number = 0.95): number => {
         const var95 = this.calculateVaR(returns, confidenceLevel);
         const tailReturns = Array.from(returns).filter(r => r <= var95);
         return tailReturns.reduce((sum, r) => sum + r, 0) / tailReturns.length;

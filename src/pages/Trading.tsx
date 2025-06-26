@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { TrendingUp, Activity } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -7,6 +6,7 @@ import ErrorBoundary from "@/components/error/ErrorBoundary";
 import { TradingChartSkeleton, OrderFormSkeleton, PortfolioSkeleton, OrderBookSkeleton } from "@/components/loading/LoadingStates";
 import { orderManager } from "@/services/orderManager";
 import { enhancedWsService } from "@/services/enhancedWebSocketService";
+import { realTimeDataManager } from "@/services/realTimeDataManager";
 import { useErrorHandler } from "@/hooks/useErrorHandler";
 import { useRetry } from "@/hooks/useRetry";
 import { TradingTabs } from "@/components/trading/TradingTabs";
@@ -16,6 +16,7 @@ const Trading = () => {
   const [connectionStatus, setConnectionStatus] = useState({ live: false, configured: false });
   const [marketData, setMarketData] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentPrice, setCurrentPrice] = useState(45234);
   const [portfolio] = useState([
     { symbol: 'BTCUSDT', allocation: 0.4, value: 18000 },
     { symbol: 'ETHUSDT', allocation: 0.3, value: 13500 },
@@ -31,15 +32,20 @@ const Trading = () => {
       try {
         setIsLoading(true);
 
-        // Initialize enhanced WebSocket connection with retry
+        // Initialize real-time data manager with retry
         await retry(async () => {
-          enhancedWsService.connect();
+          await realTimeDataManager.initialize();
         }, {
           maxAttempts: 3,
           delay: 1000,
           onError: (error, attempt) => {
-            console.warn(`WebSocket connection attempt ${attempt} failed:`, error);
+            console.warn(`Real-time data manager initialization attempt ${attempt} failed:`, error);
           }
+        });
+
+        // Subscribe to price updates for current price
+        const unsubscribePrice = realTimeDataManager.subscribe(`price_${selectedSymbol}`, (priceData) => {
+          setCurrentPrice(priceData.price);
         });
         
         // Get connection status with retry
@@ -55,7 +61,7 @@ const Trading = () => {
         // Generate sample market data for AI analysis
         const generateMarketData = () => {
           const data = [];
-          const basePrice = 45000;
+          const basePrice = currentPrice;
           const now = Date.now();
           
           for (let i = 99; i >= 0; i--) {
@@ -85,6 +91,7 @@ const Trading = () => {
         
         return () => {
           clearInterval(interval);
+          unsubscribePrice();
         };
 
       } catch (error) {
@@ -99,7 +106,7 @@ const Trading = () => {
     };
 
     initializeTrading();
-  }, [handleError, retry]);
+  }, [handleError, retry, selectedSymbol, currentPrice]);
 
   if (isLoading && !isRetrying) {
     return (
@@ -142,9 +149,13 @@ const Trading = () => {
             </p>
           </div>
           
-          {/* Live Price Display */}
+          {/* Enhanced Live Price Display */}
           <ErrorBoundary fallback={<div className="text-sm text-muted-foreground">Price unavailable</div>}>
-            <LivePriceDisplay symbol={selectedSymbol} />
+            <LivePriceDisplay 
+              symbol={selectedSymbol} 
+              showVolume={true}
+              showHighLow={true}
+            />
           </ErrorBoundary>
         </div>
 
@@ -164,7 +175,7 @@ const Trading = () => {
         {/* Trading Interface */}
         <TradingTabs 
           selectedSymbol={selectedSymbol}
-          currentPrice={45234}
+          currentPrice={currentPrice}
           marketData={marketData}
           portfolio={portfolio}
         />

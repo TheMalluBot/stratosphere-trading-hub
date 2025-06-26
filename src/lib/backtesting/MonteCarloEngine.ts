@@ -1,4 +1,3 @@
-
 import { StrategyResult, StrategySignal, MarketData } from '@/types/strategy';
 
 export interface MonteCarloConfig {
@@ -27,7 +26,7 @@ export interface MonteCarloResults {
     std: number;
     percentiles: Record<number, number>;
   };
-  var: Record<number, number>;
+  valueAtRisk: Record<number, number>;
   cvar: Record<number, number>;
   probabilityOfLoss: number;
   expectedShortfall: number;
@@ -211,7 +210,7 @@ export class MonteCarloEngine {
       percentiles: this.calculateMultiplePercentiles(sharpeRatios, [5, 10, 25, 75, 90, 95])
     };
 
-    const var = this.calculateMultiplePercentiles(totalReturns, [1, 5, 10]);
+    const valueAtRisk = this.calculateMultiplePercentiles(totalReturns, [1, 5, 10]);
     const cvar = this.calculateConditionalVaR(totalReturns, [1, 5, 10]);
 
     const probabilityOfLoss = totalReturns.filter(r => r < 0).length / totalReturns.length;
@@ -221,7 +220,7 @@ export class MonteCarloEngine {
       returns,
       maxDrawdown,
       sharpeRatio,
-      var,
+      valueAtRisk,
       cvar,
       probabilityOfLoss,
       expectedShortfall
@@ -289,17 +288,17 @@ export class MonteCarloEngine {
     const result: Record<number, number> = {};
     
     for (const level of confidenceLevels) {
-      const var = this.calculatePercentile(values, level);
-      const tailValues = values.filter(v => v <= var);
-      result[level] = tailValues.length > 0 ? this.calculateMean(tailValues) : var;
+      const varValue = this.calculatePercentile(values, level);
+      const tailValues = values.filter(v => v <= varValue);
+      result[level] = tailValues.length > 0 ? this.calculateMean(tailValues) : varValue;
     }
     
     return result;
   }
 
   private calculateExpectedShortfall(values: number[], confidenceLevel: number): number {
-    const var = this.calculatePercentile(values, confidenceLevel * 100);
-    const tailValues = values.filter(v => v <= var);
+    const varValue = this.calculatePercentile(values, confidenceLevel * 100);
+    const tailValues = values.filter(v => v <= varValue);
     return tailValues.length > 0 ? -this.calculateMean(tailValues) : 0;
   }
 }

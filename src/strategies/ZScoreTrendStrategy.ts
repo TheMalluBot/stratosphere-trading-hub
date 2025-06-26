@@ -1,138 +1,95 @@
 
-import { BaseStrategy, StrategyConfig, StrategyResult, StrategySignal, MarketData } from '../types/strategy';
+import { StrategyConfig, StrategyResult, StrategySignal, MarketData } from '@/types/strategy';
 
-export class ZScoreTrendStrategy extends BaseStrategy {
-  getDefaultConfig(): Partial<StrategyConfig> {
-    return {
-      name: 'Rolling Z-Score Trend',
-      description: 'QuantAlgo momentum strategy with z-score normalization',
-      parameters: {
-        period: 20,
-        momentumPeriod: 14,
-        threshold: 1.5,
-        exitThreshold: 0.5,
-        overboughtLevel: 2.0,
-        oversoldLevel: -2.0
-      }
-    };
+export class ZScoreTrendStrategy {
+  private config: StrategyConfig;
+
+  constructor(config: StrategyConfig) {
+    this.config = config;
   }
 
-  calculate(data: MarketData[]): StrategyResult {
-    const { period, momentumPeriod, threshold, exitThreshold, overboughtLevel, oversoldLevel } = this.config.parameters;
+  calculate(marketData: MarketData[]): StrategyResult {
     const signals: StrategySignal[] = [];
-    const zScores: number[] = [];
-    const momentum: number[] = [];
+    const indicators: Record<string, number[]> = {
+      zScore: [],
+      movingAverage: [],
+      standardDeviation: []
+    };
 
-    for (let i = Math.max(period, momentumPeriod); i < data.length; i++) {
-      const priceSlice = data.slice(i - period, i).map(d => d.close);
-      const zScore = this.calculateZScore(data[i].close, priceSlice);
-      const mom = this.calculateMomentum(data, i, momentumPeriod);
+    const period = this.config.parameters?.period || 20;
+    const threshold = this.config.parameters?.threshold || 2;
+    
+    for (let i = period; i < marketData.length; i++) {
+      const dataSlice = marketData.slice(i - period, i);
+      const prices = dataSlice.map(d => d.close);
       
-      zScores.push(zScore);
-      momentum.push(mom);
-
-      const prevZScore = zScores[zScores.length - 2] || 0;
-      const prevMomentum = momentum[momentum.length - 2] || 0;
+      const mean = prices.reduce((a, b) => a + b, 0) / prices.length;
+      const variance = prices.reduce((sum, price) => sum + Math.pow(price - mean, 2), 0) / prices.length;
+      const stdDev = Math.sqrt(variance);
       
-      let signal: StrategySignal | null = null;
+      const currentPrice = marketData[i].close;
+      const zScore = stdDev > 0 ? (currentPrice - mean) / stdDev : 0;
+      
+      indicators.zScore.push(zScore);
+      indicators.movingAverage.push(mean);
+      indicators.standardDeviation.push(stdDev);
 
-      // Bullish momentum with z-score confirmation
-      if (mom > 0 && prevMomentum <= 0 && zScore > threshold) {
-        signal = {
-          timestamp: data[i].timestamp,
-          type: 'BUY',
-          strength: Math.min(Math.abs(zScore) / overboughtLevel, 1),
-          price: data[i].close,
-          metadata: { zScore, momentum: mom, reason: 'momentum_bullish' }
-        };
-      }
-      // Bearish momentum with z-score confirmation
-      else if (mom < 0 && prevMomentum >= 0 && zScore < -threshold) {
-        signal = {
-          timestamp: data[i].timestamp,
+      // Generate signals based on Z-Score thresholds
+      if (zScore > threshold) {
+        signals.push({
+          timestamp: marketData[i].timestamp,
           type: 'SELL',
-          strength: Math.min(Math.abs(zScore) / Math.abs(oversoldLevel), 1),
-          price: data[i].close,
-          metadata: { zScore, momentum: mom, reason: 'momentum_bearish' }
-        };
-      }
-      // Mean reversion exits
-      else if (Math.abs(zScore) < exitThreshold) {
-        signal = {
-          timestamp: data[i].timestamp,
-          type: 'EXIT',
-          strength: 0.7,
-          price: data[i].close,
-          metadata: { zScore, momentum: mom, reason: 'mean_reversion' }
-        };
-      }
-      // Overbought/oversold exits
-      else if (zScore >= overboughtLevel || zScore <= oversoldLevel) {
-        signal = {
-          timestamp: data[i].timestamp,
-          type: 'EXIT',
-          strength: 0.9,
-          price: data[i].close,
-          metadata: { zScore, momentum: mom, reason: 'extreme_zscore' }
-        };
-      }
-
-      if (signal) {
-        signals.push(signal);
+          price: currentPrice,
+          confidence: Math.min(Math.abs(zScore) / threshold, 1),
+          reason: `Overbought condition (Z-Score: ${zScore.toFixed(2)})`
+        });
+      } else if (zScore < -threshold) {
+        signals.push({
+          timestamp: marketData[i].timestamp,
+          type: 'BUY',
+          price: currentPrice,
+          confidence: Math.min(Math.abs(zScore) / threshold, 1),
+          reason: `Oversold condition (Z-Score: ${zScore.toFixed(2)})`
+        });
       }
     }
 
     return {
       signals,
-      indicators: { zScore: zScores, momentum },
-      performance: this.calculatePerformance(signals, data)
+      indicators,
+      performance: this.calculateBasicPerformance(signals, marketData),
+      metadata: {
+        strategyName: 'Z-Score Trend Strategy',
+        parameters: this.config.parameters,
+        executionTime: Date.now()
+      }
     };
   }
 
-  private calculateZScore(currentPrice: number, prices: number[]): number {
-    const mean = prices.reduce((sum, price) => sum + price, 0) / prices.length;
-    const variance = prices.reduce((sum, price) => sum + Math.pow(price - mean, 2), 0) / prices.length;
-    const stdDev = Math.sqrt(variance);
-    
-    return stdDev > 0 ? (currentPrice - mean) / stdDev : 0;
-  }
-
-  private calculateMomentum(data: MarketData[], index: number, period: number): number {
-    if (index < period) return 0;
-    
-    const currentPrice = data[index].close;
-    const pastPrice = data[index - period].close;
-    
-    return (currentPrice - pastPrice) / pastPrice * 100;
-  }
-
-  private calculatePerformance(signals: StrategySignal[], data: MarketData[]) {
-    // Similar performance calculation as LinearRegressionStrategy
+  private calculateBasicPerformance(signals: StrategySignal[], marketData: MarketData[]) {
     let totalReturn = 0;
     let wins = 0;
-    let totalTrades = 0;
-    let position = 0;
-    let entryPrice = 0;
-    
-    for (const signal of signals) {
-      if (signal.type === 'BUY' && position === 0) {
-        position = 1;
-        entryPrice = signal.price;
-        totalTrades++;
-      } else if (signal.type === 'SELL' && position === 1) {
-        const return_ = (signal.price - entryPrice) / entryPrice;
-        totalReturn += return_;
-        if (return_ > 0) wins++;
-        position = 0;
+    let losses = 0;
+
+    for (let i = 0; i < signals.length - 1; i += 2) {
+      const entry = signals[i];
+      const exit = signals[i + 1];
+      
+      if (entry && exit) {
+        const returnPct = entry.type === 'BUY' 
+          ? (exit.price - entry.price) / entry.price
+          : (entry.price - exit.price) / entry.price;
+        
+        totalReturn += returnPct;
+        if (returnPct > 0) wins++; else losses++;
       }
     }
-    
+
     return {
       totalReturn: totalReturn * 100,
-      winRate: totalTrades > 0 ? (wins / totalTrades) * 100 : 0,
-      sharpeRatio: 1.3,
-      maxDrawdown: -6.8,
-      totalTrades
+      winRate: wins / (wins + losses) * 100,
+      totalTrades: signals.length,
+      sharpeRatio: totalReturn / Math.sqrt(0.16)
     };
   }
 }

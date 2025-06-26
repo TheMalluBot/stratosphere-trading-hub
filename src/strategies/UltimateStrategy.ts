@@ -1,321 +1,180 @@
 
-import { BaseStrategy, StrategyConfig, StrategyResult, StrategySignal, MarketData } from '../types/strategy';
-import { LinearRegressionStrategy } from './LinearRegressionStrategy';
-import { ZScoreTrendStrategy } from './ZScoreTrendStrategy';
-import { StopLossTakeProfitStrategy } from './StopLossTakeProfitStrategy';
-import { DeviationTrendStrategy } from './DeviationTrendStrategy';
-import { VolumeProfileStrategy } from './VolumeProfileStrategy';
+import { StrategyConfig, StrategyResult, StrategySignal, MarketData } from '@/types/strategy';
 
-export class UltimateStrategy extends BaseStrategy {
-  private strategies: BaseStrategy[] = [];
+export class UltimateStrategy {
+  private config: StrategyConfig;
 
   constructor(config: StrategyConfig) {
-    super(config);
-    this.initializeStrategies();
+    this.config = config;
   }
 
-  getDefaultConfig(): Partial<StrategyConfig> {
-    return {
-      name: 'Ultimate Combined Strategy',
-      description: 'AI-powered combination of all 5 strategies with advanced signal processing',
-      parameters: {
-        combinationMethod: 'weighted', // 'weighted', 'consensus', 'priority'
-        minimumConsensus: 3, // For consensus method
-        strategyWeights: {
-          linearRegression: 0.20,
-          zScoreTrend: 0.20,
-          stopLossTakeProfit: 0.20,
-          deviationTrend: 0.20,
-          volumeProfile: 0.20
-        },
-        signalThreshold: 0.6, // Minimum combined signal strength
-        riskManagement: {
-          maxPositionSize: 0.2,
-          stopLossPercent: 2.0,
-          takeProfitPercent: 4.0,
-          portfolioRiskPercent: 10.0
-        }
-      }
-    };
-  }
-
-  private initializeStrategies(): void {
-    const { strategyWeights } = this.config.parameters;
-
-    // Initialize all 5 strategies with default configs
-    const lrConfig: StrategyConfig = {
-      id: 'lr',
-      name: 'Linear Regression',
-      description: 'LR component',
-      parameters: {},
-      enabled: true,
-      weight: strategyWeights.linearRegression
+  calculate(marketData: MarketData[]): StrategyResult {
+    const signals: StrategySignal[] = [];
+    const indicators: Record<string, number[]> = {
+      rsi: [],
+      macd: [],
+      ema20: [],
+      ema50: [],
+      volume: [],
+      volatility: []
     };
 
-    const zsConfig: StrategyConfig = {
-      id: 'zs',
-      name: 'Z-Score Trend', 
-      description: 'ZS component',
-      parameters: {},
-      enabled: true,
-      weight: strategyWeights.zScoreTrend
-    };
-
-    const slConfig: StrategyConfig = {
-      id: 'sl',
-      name: 'Stop Loss Take Profit',
-      description: 'SL/TP component',
-      parameters: {},
-      enabled: true,
-      weight: strategyWeights.stopLossTakeProfit
-    };
-
-    const dtConfig: StrategyConfig = {
-      id: 'dt',
-      name: 'Deviation Trend',
-      description: 'DT component',
-      parameters: {},
-      enabled: true,
-      weight: strategyWeights.deviationTrend
-    };
-
-    const vpConfig: StrategyConfig = {
-      id: 'vp',
-      name: 'Volume Profile',
-      description: 'VP component',
-      parameters: {},
-      enabled: true,
-      weight: strategyWeights.volumeProfile
-    };
-
-    this.strategies = [
-      new LinearRegressionStrategy(lrConfig),
-      new ZScoreTrendStrategy(zsConfig),
-      new StopLossTakeProfitStrategy(slConfig),
-      new DeviationTrendStrategy(dtConfig),
-      new VolumeProfileStrategy(vpConfig)
-    ];
-  }
-
-  calculate(data: MarketData[]): StrategyResult {
-    const { combinationMethod, signalThreshold, strategyWeights } = this.config.parameters;
+    const rsiPeriod = 14;
+    const emaShort = 20;
+    const emaLong = 50;
     
-    // Get results from all strategies
-    const strategyResults = this.strategies.map(strategy => strategy.calculate(data));
-    
-    // Combine signals based on method
-    const combinedSignals = this.combineSignals(strategyResults, data, combinationMethod, strategyWeights);
-    
-    // Filter by signal threshold
-    const filteredSignals = combinedSignals.filter(signal => signal.strength >= signalThreshold);
-    
-    // Combine indicators
-    const combinedIndicators: Record<string, number[]> = {};
-    strategyResults.forEach((result, index) => {
-      Object.entries(result.indicators).forEach(([key, values]) => {
-        combinedIndicators[`${this.strategies[index].getName()}_${key}`] = values;
-      });
-    });
+    // Calculate indicators
+    for (let i = Math.max(rsiPeriod, emaLong); i < marketData.length; i++) {
+      const rsi = this.calculateRSI(marketData, i, rsiPeriod);
+      const ema20 = this.calculateEMA(marketData, i, emaShort);
+      const ema50 = this.calculateEMA(marketData, i, emaLong);
+      const macd = this.calculateMACD(marketData, i);
+      const volatility = this.calculateVolatility(marketData, i, 20);
+      
+      indicators.rsi.push(rsi);
+      indicators.ema20.push(ema20);
+      indicators.ema50.push(ema50);
+      indicators.macd.push(macd);
+      indicators.volume.push(marketData[i].volume);
+      indicators.volatility.push(volatility);
 
-    return {
-      signals: filteredSignals,
-      indicators: combinedIndicators,
-      performance: this.calculateCombinedPerformance(filteredSignals, data, strategyResults)
-    };
-  }
+      // Multi-condition signal generation
+      const bullishConditions = [
+        rsi < 30, // Oversold
+        ema20 > ema50, // Short-term trend up
+        macd > 0, // MACD positive
+        marketData[i].volume > this.getAverageVolume(marketData, i, 10) // Above average volume
+      ];
 
-  private combineSignals(
-    strategyResults: StrategyResult[], 
-    data: MarketData[], 
-    method: string,
-    weights: Record<string, number>
-  ): StrategySignal[] {
-    const combinedSignals: StrategySignal[] = [];
-    const timeSignals: Map<number, StrategySignal[]> = new Map();
+      const bearishConditions = [
+        rsi > 70, // Overbought
+        ema20 < ema50, // Short-term trend down
+        macd < 0, // MACD negative
+        volatility > this.getAverageVolatility(marketData, i, 10) // High volatility
+      ];
 
-    // Group signals by timestamp
-    strategyResults.forEach((result, strategyIndex) => {
-      result.signals.forEach(signal => {
-        if (!timeSignals.has(signal.timestamp)) {
-          timeSignals.set(signal.timestamp, []);
-        }
-        timeSignals.get(signal.timestamp)!.push({
-          ...signal,
-          metadata: { ...signal.metadata, strategyIndex }
+      const bullishScore = bullishConditions.filter(Boolean).length / bullishConditions.length;
+      const bearishScore = bearishConditions.filter(Boolean).length / bearishConditions.length;
+
+      if (bullishScore >= 0.75) {
+        signals.push({
+          timestamp: marketData[i].timestamp,
+          type: 'BUY',
+          price: marketData[i].close,
+          confidence: bullishScore,
+          reason: `Strong bullish signal (Score: ${bullishScore.toFixed(2)})`
         });
-      });
-    });
-
-    // Combine signals for each timestamp
-    timeSignals.forEach((signals, timestamp) => {
-      const combinedSignal = this.combineSignalsAtTimestamp(signals, method, weights);
-      if (combinedSignal) {
-        combinedSignals.push(combinedSignal);
+      } else if (bearishScore >= 0.75) {
+        signals.push({
+          timestamp: marketData[i].timestamp,
+          type: 'SELL',
+          price: marketData[i].close,
+          confidence: bearishScore,
+          reason: `Strong bearish signal (Score: ${bearishScore.toFixed(2)})`
+        });
       }
-    });
-
-    return combinedSignals.sort((a, b) => a.timestamp - b.timestamp);
-  }
-
-  private combineSignalsAtTimestamp(
-    signals: StrategySignal[], 
-    method: string, 
-    weights: Record<string, number>
-  ): StrategySignal | null {
-    if (signals.length === 0) return null;
-
-    const timestamp = signals[0].timestamp;
-    const price = signals[0].price;
-
-    if (method === 'weighted') {
-      return this.weightedCombination(signals, timestamp, price, weights);
-    } else if (method === 'consensus') {
-      return this.consensusCombination(signals, timestamp, price);
     }
 
-    return null;
-  }
-
-  private weightedCombination(
-    signals: StrategySignal[], 
-    timestamp: number, 
-    price: number,
-    weights: Record<string, number>
-  ): StrategySignal | null {
-    const strategyNames = ['linearRegression', 'zScoreTrend', 'stopLossTakeProfit', 'deviationTrend', 'volumeProfile'];
-    let buyStrength = 0;
-    let sellStrength = 0;
-    let totalWeight = 0;
-
-    signals.forEach(signal => {
-      const strategyIndex = signal.metadata?.strategyIndex || 0;
-      const strategyName = strategyNames[strategyIndex];
-      const weight = weights[strategyName] || 0;
-      
-      if (signal.type === 'BUY') {
-        buyStrength += signal.strength * weight;
-      } else if (signal.type === 'SELL') {
-        sellStrength += signal.strength * weight;
-      }
-      
-      totalWeight += weight;
-    });
-
-    if (totalWeight === 0) return null;
-
-    buyStrength /= totalWeight;
-    sellStrength /= totalWeight;
-
-    const netStrength = buyStrength - sellStrength;
-    
-    if (Math.abs(netStrength) < 0.1) return null; // No clear signal
-
     return {
-      timestamp,
-      type: netStrength > 0 ? 'BUY' : 'SELL',
-      strength: Math.abs(netStrength),
-      price,
+      signals,
+      indicators,
+      performance: this.calculateBasicPerformance(signals, marketData),
       metadata: {
-        buyStrength,
-        sellStrength,
-        contributingStrategies: signals.length,
-        method: 'weighted',
-        strategiesUsed: signals.map(s => strategyNames[s.metadata?.strategyIndex || 0])
+        strategyName: 'Ultimate Combined Strategy',
+        parameters: this.config.parameters,
+        executionTime: Date.now()
       }
     };
   }
 
-  private consensusCombination(
-    signals: StrategySignal[], 
-    timestamp: number, 
-    price: number
-  ): StrategySignal | null {
-    const buySignals = signals.filter(s => s.type === 'BUY');
-    const sellSignals = signals.filter(s => s.type === 'SELL');
+  private calculateRSI(data: MarketData[], index: number, period: number): number {
+    if (index < period) return 50;
     
-    const minimumConsensus = this.config.parameters.minimumConsensus || 3;
-    
-    if (buySignals.length >= Math.min(minimumConsensus, 3)) {
-      const avgStrength = buySignals.reduce((sum, s) => sum + s.strength, 0) / buySignals.length;
-      return {
-        timestamp,
-        type: 'BUY',
-        strength: avgStrength,
-        price,
-        metadata: {
-          consensus: buySignals.length,
-          totalStrategies: signals.length,
-          method: 'consensus'
-        }
-      };
+    const changes = [];
+    for (let i = index - period + 1; i <= index; i++) {
+      changes.push(data[i].close - data[i - 1].close);
     }
     
-    if (sellSignals.length >= Math.min(minimumConsensus, 3)) {
-      const avgStrength = sellSignals.reduce((sum, s) => sum + s.strength, 0) / sellSignals.length;
-      return {
-        timestamp,
-        type: 'SELL',
-        strength: avgStrength,
-        price,
-        metadata: {
-          consensus: sellSignals.length,
-          totalStrategies: signals.length,
-          method: 'consensus'
-        }
-      };
-    }
-
-    return null;
+    const gains = changes.filter(change => change > 0);
+    const losses = changes.filter(change => change < 0).map(loss => Math.abs(loss));
+    
+    const avgGain = gains.length > 0 ? gains.reduce((a, b) => a + b, 0) / period : 0;
+    const avgLoss = losses.length > 0 ? losses.reduce((a, b) => a + b, 0) / period : 0;
+    
+    if (avgLoss === 0) return 100;
+    
+    const rs = avgGain / avgLoss;
+    return 100 - (100 / (1 + rs));
   }
 
-  private calculateCombinedPerformance(
-    signals: StrategySignal[], 
-    data: MarketData[], 
-    strategyResults: StrategyResult[]
-  ) {
-    // Enhanced performance calculation combining all strategy metrics
+  private calculateEMA(data: MarketData[], index: number, period: number): number {
+    if (index === 0) return data[0].close;
+    
+    const multiplier = 2 / (period + 1);
+    const prevEMA = index === 1 ? data[0].close : this.calculateEMA(data, index - 1, period);
+    
+    return (data[index].close * multiplier) + (prevEMA * (1 - multiplier));
+  }
+
+  private calculateMACD(data: MarketData[], index: number): number {
+    const ema12 = this.calculateEMA(data, index, 12);
+    const ema26 = this.calculateEMA(data, index, 26);
+    return ema12 - ema26;
+  }
+
+  private calculateVolatility(data: MarketData[], index: number, period: number): number {
+    if (index < period) return 0;
+    
+    const returns = [];
+    for (let i = index - period + 1; i <= index; i++) {
+      const returnRate = (data[i].close - data[i - 1].close) / data[i - 1].close;
+      returns.push(returnRate);
+    }
+    
+    const mean = returns.reduce((a, b) => a + b, 0) / returns.length;
+    const variance = returns.reduce((sum, ret) => sum + Math.pow(ret - mean, 2), 0) / returns.length;
+    
+    return Math.sqrt(variance);
+  }
+
+  private getAverageVolume(data: MarketData[], index: number, period: number): number {
+    const start = Math.max(0, index - period);
+    const volumes = data.slice(start, index + 1).map(d => d.volume);
+    return volumes.reduce((a, b) => a + b, 0) / volumes.length;
+  }
+
+  private getAverageVolatility(data: MarketData[], index: number, period: number): number {
+    let totalVolatility = 0;
+    for (let i = Math.max(period, index - period); i <= index; i++) {
+      totalVolatility += this.calculateVolatility(data, i, 10);
+    }
+    return totalVolatility / Math.min(period, index + 1);
+  }
+
+  private calculateBasicPerformance(signals: StrategySignal[], marketData: MarketData[]) {
     let totalReturn = 0;
     let wins = 0;
-    let totalTrades = 0;
-    let position = 0;
-    let entryPrice = 0;
-    let maxDrawdown = 0;
-    let peakValue = 100000; // Starting capital
-    let currentValue = 100000;
-    
-    for (const signal of signals) {
-      if (signal.type === 'BUY' && position === 0) {
-        position = 1;
-        entryPrice = signal.price;
-        totalTrades++;
-      } else if (signal.type === 'SELL' && position === 1) {
-        const return_ = (signal.price - entryPrice) / entryPrice;
-        totalReturn += return_;
-        currentValue *= (1 + return_);
+    let losses = 0;
+
+    for (let i = 0; i < signals.length - 1; i += 2) {
+      const entry = signals[i];
+      const exit = signals[i + 1];
+      
+      if (entry && exit) {
+        const returnPct = entry.type === 'BUY' 
+          ? (exit.price - entry.price) / entry.price
+          : (entry.price - exit.price) / entry.price;
         
-        if (return_ > 0) wins++;
-        if (currentValue > peakValue) peakValue = currentValue;
-        
-        const drawdown = (peakValue - currentValue) / peakValue;
-        if (drawdown > maxDrawdown) maxDrawdown = drawdown;
-        
-        position = 0;
+        totalReturn += returnPct;
+        if (returnPct > 0) wins++; else losses++;
       }
     }
-    
-    // Calculate average performance from individual strategies
-    const avgIndividualReturn = strategyResults.reduce((sum, result) => sum + result.performance.totalReturn, 0) / strategyResults.length;
-    const avgSharpe = strategyResults.reduce((sum, result) => sum + result.performance.sharpeRatio, 0) / strategyResults.length;
-    
+
     return {
       totalReturn: totalReturn * 100,
-      winRate: totalTrades > 0 ? (wins / totalTrades) * 100 : 0,
-      sharpeRatio: avgSharpe * 1.3, // Boost for diversification
-      maxDrawdown: -maxDrawdown * 100,
-      totalTrades,
-      individualStrategyReturn: avgIndividualReturn,
-      combinationBonus: (totalReturn * 100) - avgIndividualReturn,
-      strategiesUsed: this.strategies.length
+      winRate: wins / (wins + losses) * 100,
+      totalTrades: signals.length,
+      sharpeRatio: totalReturn / Math.sqrt(0.16)
     };
   }
 }

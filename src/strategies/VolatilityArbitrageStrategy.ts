@@ -1,181 +1,137 @@
 
-import { MarketData, StrategyResult, StrategySignal, StrategyConfig } from '@/types/strategy';
+import { StrategyConfig, StrategyResult, StrategySignal, MarketData } from '@/types/strategy';
 
 export class VolatilityArbitrageStrategy {
   private config: StrategyConfig;
-  private lookbackPeriod: number;
-  private volThreshold: number;
-  private sigmaThreshold: number;
 
   constructor(config: StrategyConfig) {
     this.config = config;
-    this.lookbackPeriod = config.parameters?.lookbackPeriod || 30;
-    this.volThreshold = config.parameters?.volThreshold || 0.05;
-    this.sigmaThreshold = config.parameters?.sigmaThreshold || 2.0;
   }
 
-  calculate(data: MarketData[]): StrategyResult {
+  calculate(marketData: MarketData[]): StrategyResult {
     const signals: StrategySignal[] = [];
     const indicators: Record<string, number[]> = {
-      realizedVol: [],
-      impliedVol: [],
-      volSpread: [],
-      volRatio: [],
-      garchVol: []
+      historicalVolatility: [],
+      impliedVolatility: [],
+      volatilitySpread: [],
+      bollinger: []
     };
 
-    for (let i = this.lookbackPeriod; i < data.length; i++) {
-      const window = data.slice(i - this.lookbackPeriod, i);
-      const returns = this.calculateReturns(window.map(d => d.close));
+    const period = this.config.parameters?.period || 20;
+    const threshold = this.config.parameters?.threshold || 0.5;
+    
+    for (let i = period; i < marketData.length; i++) {
+      const historicalVol = this.calculateHistoricalVolatility(marketData, i, period);
+      const impliedVol = this.calculateImpliedVolatility(marketData, i, period);
+      const volSpread = impliedVol - historicalVol;
+      const bollinger = this.calculateBollingerBands(marketData, i, period);
       
-      // Calculate realized volatility
-      const realizedVol = this.calculateRealizedVolatility(returns);
-      
-      // Simulate implied volatility (in practice, get from options data)
-      const impliedVol = this.simulateImpliedVolatility(realizedVol, data[i]);
-      
-      // GARCH volatility forecasting
-      const garchVol = this.calculateGARCHVolatility(returns);
-      
-      const volSpread = impliedVol - realizedVol;
-      const volRatio = realizedVol > 0 ? impliedVol / realizedVol : 1;
-      
-      indicators.realizedVol.push(realizedVol);
-      indicators.impliedVol.push(impliedVol);
-      indicators.volSpread.push(volSpread);
-      indicators.volRatio.push(volRatio);
-      indicators.garchVol.push(garchVol);
-      
-      // Generate volatility arbitrage signals
-      const volSigma = this.calculateVolatilityZScore(volSpread, indicators.volSpread);
-      
-      if (Math.abs(volSigma) > this.sigmaThreshold && Math.abs(volSpread) > this.volThreshold) {
-        const signal: StrategySignal = {
-          timestamp: data[i].timestamp,
-          type: volSpread > 0 ? 'SELL' : 'BUY', // Sell if implied > realized
-          strength: Math.min(Math.abs(volSigma) / this.sigmaThreshold, 1.0),
-          price: data[i].close,
-          metadata: {
-            realizedVol,
-            impliedVol,
-            volSpread,
-            volRatio,
-            garchVol,
-            volSigma,
-            expectedReversion: this.calculateVolReversionTarget(indicators.volSpread)
-          }
-        };
-        signals.push(signal);
+      indicators.historicalVolatility.push(historicalVol);
+      indicators.impliedVolatility.push(impliedVol);
+      indicators.volatilitySpread.push(volSpread);
+      indicators.bollinger.push(bollinger.position);
+
+      // Volatility arbitrage signals
+      if (volSpread > threshold && bollinger.position < -0.8) {
+        signals.push({
+          timestamp: marketData[i].timestamp,
+          type: 'BUY',
+          price: marketData[i].close,
+          confidence: Math.min(Math.abs(volSpread) / threshold, 1),
+          reason: `Low volatility opportunity (Spread: ${volSpread.toFixed(3)})`
+        });
+      } else if (volSpread < -threshold && bollinger.position > 0.8) {
+        signals.push({
+          timestamp: marketData[i].timestamp,
+          type: 'SELL',
+          price: marketData[i].close,
+          confidence: Math.min(Math.abs(volSpread) / threshold, 1),
+          reason: `High volatility opportunity (Spread: ${volSpread.toFixed(3)})`
+        });
       }
     }
 
     return {
       signals,
       indicators,
-      performance: this.calculatePerformance(signals, data)
+      performance: this.calculateBasicPerformance(signals, marketData),
+      metadata: {
+        strategyName: 'Volatility Arbitrage Strategy',
+        parameters: this.config.parameters,
+        executionTime: Date.now()
+      }
     };
   }
 
-  private calculateReturns(prices: number[]): number[] {
+  private calculateHistoricalVolatility(data: MarketData[], index: number, period: number): number {
+    if (index < period) return 0;
+    
     const returns = [];
-    for (let i = 1; i < prices.length; i++) {
-      returns.push(Math.log(prices[i] / prices[i-1]));
-    }
-    return returns;
-  }
-
-  private calculateRealizedVolatility(returns: number[]): number {
-    if (returns.length === 0) return 0;
-    
-    const mean = returns.reduce((sum, r) => sum + r, 0) / returns.length;
-    const variance = returns.reduce((sum, r) => sum + Math.pow(r - mean, 2), 0) / returns.length;
-    
-    return Math.sqrt(variance * 252); // Annualized
-  }
-
-  private simulateImpliedVolatility(realizedVol: number, currentData: MarketData): number {
-    // Simulate implied volatility with mean reversion and volatility clustering
-    const volOfVol = 0.3;
-    const meanReversionSpeed = 0.5;
-    const longTermVol = 0.2;
-    
-    const noise = (Math.random() - 0.5) * volOfVol;
-    const meanReversion = meanReversionSpeed * (longTermVol - realizedVol);
-    
-    return Math.max(0.05, realizedVol + meanReversion + noise);
-  }
-
-  private calculateGARCHVolatility(returns: number[]): number {
-    // Simplified GARCH(1,1) model
-    if (returns.length < 3) return 0;
-    
-    const omega = 0.000001; // Long-term variance
-    const alpha = 0.1; // ARCH coefficient
-    const beta = 0.85; // GARCH coefficient
-    
-    let variance = returns.reduce((sum, r) => sum + r * r, 0) / returns.length;
-    
-    for (let i = 1; i < returns.length; i++) {
-      const lagged_return_sq = returns[i-1] * returns[i-1];
-      variance = omega + alpha * lagged_return_sq + beta * variance;
+    for (let i = index - period + 1; i <= index; i++) {
+      const returnRate = Math.log(data[i].close / data[i - 1].close);
+      returns.push(returnRate);
     }
     
-    return Math.sqrt(variance * 252); // Annualized
+    const mean = returns.reduce((a, b) => a + b, 0) / returns.length;
+    const variance = returns.reduce((sum, ret) => sum + Math.pow(ret - mean, 2), 0) / (returns.length - 1);
+    
+    return Math.sqrt(variance * 252); // Annualized volatility
   }
 
-  private calculateVolatilityZScore(currentSpread: number, spreadHistory: number[]): number {
-    if (spreadHistory.length < 10) return 0;
+  private calculateImpliedVolatility(data: MarketData[], index: number, period: number): number {
+    // Simplified implied volatility calculation
+    const historicalVol = this.calculateHistoricalVolatility(data, index, period);
+    const recentVolatility = this.calculateHistoricalVolatility(data, index, Math.min(period / 2, 10));
     
-    const recentHistory = spreadHistory.slice(-30);
-    const mean = recentHistory.reduce((sum, s) => sum + s, 0) / recentHistory.length;
-    const std = Math.sqrt(
-      recentHistory.reduce((sum, s) => sum + Math.pow(s - mean, 2), 0) / recentHistory.length
-    );
+    // Market stress factor based on price movements
+    const priceChange = Math.abs((data[index].close - data[index - 1].close) / data[index - 1].close);
+    const stressFactor = 1 + (priceChange * 10);
     
-    return std > 0 ? (currentSpread - mean) / std : 0;
+    return historicalVol * stressFactor * (0.8 + Math.random() * 0.4); // Add some randomness
   }
 
-  private calculateVolReversionTarget(spreadHistory: number[]): number {
-    if (spreadHistory.length < 10) return 0;
+  private calculateBollingerBands(data: MarketData[], index: number, period: number) {
+    if (index < period) return { upper: 0, lower: 0, middle: 0, position: 0 };
     
-    const recentHistory = spreadHistory.slice(-60);
-    return recentHistory.reduce((sum, s) => sum + s, 0) / recentHistory.length;
+    const prices = data.slice(index - period + 1, index + 1).map(d => d.close);
+    const middle = prices.reduce((a, b) => a + b, 0) / prices.length;
+    const variance = prices.reduce((sum, price) => sum + Math.pow(price - middle, 2), 0) / prices.length;
+    const stdDev = Math.sqrt(variance);
+    
+    const upper = middle + (2 * stdDev);
+    const lower = middle - (2 * stdDev);
+    const currentPrice = data[index].close;
+    
+    // Position within bands (-1 to 1)
+    const position = (currentPrice - middle) / (stdDev * 2);
+    
+    return { upper, lower, middle, position };
   }
 
-  private calculatePerformance(signals: StrategySignal[], data: MarketData[]) {
-    // Basic performance calculation
+  private calculateBasicPerformance(signals: StrategySignal[], marketData: MarketData[]) {
     let totalReturn = 0;
-    let trades = 0;
     let wins = 0;
+    let losses = 0;
 
-    for (let i = 0; i < signals.length - 1; i++) {
+    for (let i = 0; i < signals.length - 1; i += 2) {
       const entry = signals[i];
       const exit = signals[i + 1];
       
-      if (entry.type !== exit.type) {
-        trades++;
+      if (entry && exit) {
         const returnPct = entry.type === 'BUY' 
           ? (exit.price - entry.price) / entry.price
           : (entry.price - exit.price) / entry.price;
         
         totalReturn += returnPct;
-        if (returnPct > 0) wins++;
+        if (returnPct > 0) wins++; else losses++;
       }
     }
 
     return {
       totalReturn: totalReturn * 100,
-      winRate: trades > 0 ? (wins / trades) * 100 : 0,
-      totalTrades: trades,
-      sharpeRatio: trades > 0 ? (totalReturn / trades) * Math.sqrt(252) : 0,
-      maxDrawdown: 0,
-      profitFactor: 0,
-      calmarRatio: 0,
-      sortinoRatio: 0,
-      informationRatio: 0,
-      ulcerIndex: 0,
-      var95: 0,
-      cvar95: 0
+      winRate: wins / (wins + losses) * 100,
+      totalTrades: signals.length,
+      sharpeRatio: totalReturn / Math.sqrt(0.16)
     };
   }
 }

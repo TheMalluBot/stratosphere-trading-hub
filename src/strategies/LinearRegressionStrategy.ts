@@ -1,137 +1,118 @@
 
-import { BaseStrategy, StrategyConfig, StrategyResult, StrategySignal, MarketData } from '../types/strategy';
+import { StrategyConfig, StrategyResult, StrategySignal, MarketData } from '@/types/strategy';
 
-export class LinearRegressionStrategy extends BaseStrategy {
-  getDefaultConfig(): Partial<StrategyConfig> {
-    return {
-      name: 'Linear Regression Oscillator',
-      description: 'ChartPrime mean reversion strategy with normalization',
-      parameters: {
-        period: 14,
-        source: 'close',
-        upperThreshold: 1.5,
-        lowerThreshold: -1.5,
-        lookbackBars: 5,
-        enableInvalidation: true
-      }
-    };
+export class LinearRegressionStrategy {
+  private config: StrategyConfig;
+
+  constructor(config: StrategyConfig) {
+    this.config = config;
   }
 
-  calculate(data: MarketData[]): StrategyResult {
-    const { period, upperThreshold, lowerThreshold, lookbackBars } = this.config.parameters;
+  calculate(marketData: MarketData[]): StrategyResult {
     const signals: StrategySignal[] = [];
-    const lroValues: number[] = [];
-    const normalizedValues: number[] = [];
+    const indicators: Record<string, number[]> = {
+      linearRegression: [],
+      trend: [],
+      rSquared: []
+    };
 
-    for (let i = period; i < data.length; i++) {
-      const slice = data.slice(i - period, i);
-      const { lro, normalized } = this.calculateLRO(slice, period);
+    const lookbackPeriod = this.config.parameters?.lookbackPeriod || 20;
+    
+    for (let i = lookbackPeriod; i < marketData.length; i++) {
+      const dataSlice = marketData.slice(i - lookbackPeriod, i);
+      const regression = this.calculateLinearRegression(dataSlice);
       
-      lroValues.push(lro);
-      normalizedValues.push(normalized);
+      indicators.linearRegression.push(regression.slope);
+      indicators.trend.push(regression.trend);
+      indicators.rSquared.push(regression.rSquared);
 
-      // Generate signals based on threshold crossovers
-      const prevNormalized = normalizedValues[normalizedValues.length - 2] || 0;
-      let signal: StrategySignal | null = null;
-
-      // Bullish signal: crossing above 0 from below
-      if (prevNormalized <= 0 && normalized > 0) {
-        signal = {
-          timestamp: data[i].timestamp,
+      // Generate signals based on linear regression
+      if (regression.trend > 0.5 && regression.rSquared > 0.7) {
+        signals.push({
+          timestamp: marketData[i].timestamp,
           type: 'BUY',
-          strength: Math.min(Math.abs(normalized) / upperThreshold, 1),
-          price: data[i].close,
-          metadata: { lro, normalized, reason: 'bullish_crossover' }
-        };
-      }
-      // Bearish signal: crossing below 0 from above
-      else if (prevNormalized >= 0 && normalized < 0) {
-        signal = {
-          timestamp: data[i].timestamp,
+          price: marketData[i].close,
+          confidence: regression.rSquared,
+          reason: `Strong upward trend detected (R²: ${regression.rSquared.toFixed(3)})`
+        });
+      } else if (regression.trend < -0.5 && regression.rSquared > 0.7) {
+        signals.push({
+          timestamp: marketData[i].timestamp,
           type: 'SELL',
-          strength: Math.min(Math.abs(normalized) / Math.abs(lowerThreshold), 1),
-          price: data[i].close,
-          metadata: { lro, normalized, reason: 'bearish_crossover' }
-        };
-      }
-      // Exit signals at extreme levels
-      else if (normalized >= upperThreshold || normalized <= lowerThreshold) {
-        signal = {
-          timestamp: data[i].timestamp,
-          type: 'EXIT',
-          strength: 0.8,
-          price: data[i].close,
-          metadata: { lro, normalized, reason: 'extreme_level' }
-        };
-      }
-
-      if (signal) {
-        signals.push(signal);
+          price: marketData[i].close,
+          confidence: regression.rSquared,
+          reason: `Strong downward trend detected (R²: ${regression.rSquared.toFixed(3)})`
+        });
       }
     }
 
     return {
       signals,
-      indicators: { lro: lroValues, normalized: normalizedValues },
-      performance: this.calculatePerformance(signals, data)
+      indicators,
+      performance: this.calculateBasicPerformance(signals, marketData),
+      metadata: {
+        strategyName: 'Linear Regression Strategy',
+        parameters: this.config.parameters,
+        executionTime: Date.now()
+      }
     };
   }
 
-  private calculateLRO(data: MarketData[], period: number): { lro: number, normalized: number } {
-    const prices = data.map(d => d.close);
-    const n = prices.length;
-    
-    // Linear regression calculation
-    const sumX = (n * (n - 1)) / 2;
-    const sumY = prices.reduce((sum, price) => sum + price, 0);
-    const sumXY = prices.reduce((sum, price, index) => sum + (price * index), 0);
-    const sumX2 = (n * (n - 1) * (2 * n - 1)) / 6;
-    
-    const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+  private calculateLinearRegression(data: MarketData[]) {
+    const n = data.length;
+    const x = Array.from({ length: n }, (_, i) => i);
+    const y = data.map(d => d.close);
+
+    const sumX = x.reduce((a, b) => a + b, 0);
+    const sumY = y.reduce((a, b) => a + b, 0);
+    const sumXY = x.reduce((sum, xi, i) => sum + xi * y[i], 0);
+    const sumXX = x.reduce((sum, xi) => sum + xi * xi, 0);
+    const sumYY = y.reduce((sum, yi) => sum + yi * yi, 0);
+
+    const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
     const intercept = (sumY - slope * sumX) / n;
-    
-    // Current regression value
-    const regValue = intercept + slope * (n - 1);
-    const currentPrice = prices[prices.length - 1];
-    const lro = currentPrice - regValue;
-    
-    // Normalize using standard deviation
-    const mean = prices.reduce((sum, price) => sum + price, 0) / prices.length;
-    const variance = prices.reduce((sum, price) => sum + Math.pow(price - mean, 2), 0) / prices.length;
-    const stdDev = Math.sqrt(variance);
-    
-    const normalized = stdDev > 0 ? lro / stdDev : 0;
-    
-    return { lro, normalized };
+
+    // Calculate R-squared
+    const yMean = sumY / n;
+    const ssRes = y.reduce((sum, yi, i) => {
+      const predicted = slope * x[i] + intercept;
+      return sum + Math.pow(yi - predicted, 2);
+    }, 0);
+    const ssTot = y.reduce((sum, yi) => sum + Math.pow(yi - yMean, 2), 0);
+    const rSquared = 1 - (ssRes / ssTot);
+
+    return {
+      slope,
+      intercept,
+      rSquared,
+      trend: slope > 0 ? 1 : slope < 0 ? -1 : 0
+    };
   }
 
-  private calculatePerformance(signals: StrategySignal[], data: MarketData[]) {
-    // Basic performance calculation
+  private calculateBasicPerformance(signals: StrategySignal[], marketData: MarketData[]) {
     let totalReturn = 0;
     let wins = 0;
-    let totalTrades = 0;
-    let position = 0;
-    let entryPrice = 0;
-    
-    for (const signal of signals) {
-      if (signal.type === 'BUY' && position === 0) {
-        position = 1;
-        entryPrice = signal.price;
-        totalTrades++;
-      } else if (signal.type === 'SELL' && position === 1) {
-        const return_ = (signal.price - entryPrice) / entryPrice;
-        totalReturn += return_;
-        if (return_ > 0) wins++;
-        position = 0;
+    let losses = 0;
+
+    for (let i = 0; i < signals.length - 1; i += 2) {
+      const entry = signals[i];
+      const exit = signals[i + 1];
+      
+      if (entry && exit) {
+        const returnPct = entry.type === 'BUY' 
+          ? (exit.price - entry.price) / entry.price
+          : (entry.price - exit.price) / entry.price;
+        
+        totalReturn += returnPct;
+        if (returnPct > 0) wins++; else losses++;
       }
     }
-    
+
     return {
       totalReturn: totalReturn * 100,
-      winRate: totalTrades > 0 ? (wins / totalTrades) * 100 : 0,
-      sharpeRatio: 1.5, // Simplified
-      maxDrawdown: -5.2, // Simplified
-      totalTrades
+      winRate: wins / (wins + losses) * 100,
+      totalTrades: signals.length,
+      sharpeRatio: totalReturn / Math.sqrt(0.16) // Simplified calculation
     };
   }
 }

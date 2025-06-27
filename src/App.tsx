@@ -1,4 +1,5 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "next-themes";
@@ -91,15 +92,34 @@ function AppContent() {
           <DesktopIntegration />
           <Routes>
             <Route path="/auth" element={<Auth />} />
-            <Route path="/" element={
-              <>
+            
+            {/* Landing page for non-authenticated users only */}
+            <Route 
+              path="/" 
+              element={
                 <SignedOut>
-                  <Index />
+                  <div className="w-full h-full overflow-auto">
+                    <Index />
+                  </div>
                 </SignedOut>
+              } 
+            />
+            
+            {/* Redirect authenticated users from root to dashboard */}
+            <Route 
+              path="/" 
+              element={
                 <SignedIn>
-                  <TradingLayout />
+                  <Navigate to="/dashboard" replace />
                 </SignedIn>
-              </>
+              } 
+            />
+            
+            {/* App routes for authenticated users */}
+            <Route element={
+              <SignedIn>
+                <TradingLayout />
+              </SignedIn>
             }>
               <Route path="dashboard" element={<Dashboard />} />
               <Route path="tradingview" element={<TradingView />} />
@@ -117,6 +137,7 @@ function AppContent() {
               <Route path="journal" element={<Journal />} />
               <Route path="settings" element={<Settings />} />
             </Route>
+            
             <Route path="*" element={<NotFound />} />
           </Routes>
         </div>

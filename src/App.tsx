@@ -1,4 +1,3 @@
-
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/sonner";
@@ -95,14 +94,13 @@ function AppContent() {
             <Route path="/" element={
               <>
                 <SignedOut>
-                  <Auth />
+                  <Index />
                 </SignedOut>
                 <SignedIn>
                   <TradingLayout />
                 </SignedIn>
               </>
             }>
-              <Route index element={<Index />} />
               <Route path="dashboard" element={<Dashboard />} />
               <Route path="tradingview" element={<TradingView />} />
               <Route path="charts" element={<Charts />} />
@@ -118,8 +116,8 @@ function AppContent() {
               <Route path="risk-management" element={<RiskManagement />} />
               <Route path="journal" element={<Journal />} />
               <Route path="settings" element={<Settings />} />
-              <Route path="*" element={<NotFound />} />
             </Route>
+            <Route path="*" element={<NotFound />} />
           </Routes>
         </div>
       </SidebarProvider>

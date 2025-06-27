@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { TradingEngine, StrategyExecutionConfig, ExecutionUpdate } from '@/lib/trading/TradingEngine';
 import { StrategyExecution } from '@/lib/trading/StrategyExecution';
@@ -46,19 +45,8 @@ export function useAlgoTrading() {
       
       // Set up real-time updates
       tradingEngine.onExecutionUpdate(executionId, (update: ExecutionUpdate) => {
-        setActiveStrategies(prev => 
-          prev.map(strategy => 
-            strategy.executionId === executionId 
-              ? { 
-                  ...strategy, 
-                  pnl: update.pnl, 
-                  totalTrades: update.totalTrades,
-                  winRate: update.winRate,
-                  lastSignal: update.lastSignal
-                }
-              : strategy
-          )
-        );
+        // Instead of spreading, we refresh the entire list to get the updated instances
+        refreshActiveStrategies();
       });
       
       // Refresh the list

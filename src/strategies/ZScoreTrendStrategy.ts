@@ -1,11 +1,14 @@
 
-import { StrategyConfig, StrategyResult, StrategySignal, MarketData } from '@/types/strategy';
+import { BaseStrategy, StrategyConfig, StrategyResult, StrategySignal, MarketData } from '@/types/strategy';
 
-export class ZScoreTrendStrategy {
-  private config: StrategyConfig;
-
-  constructor(config: StrategyConfig) {
-    this.config = config;
+export class ZScoreTrendStrategy extends BaseStrategy {
+  getDefaultConfig(): Partial<StrategyConfig> {
+    return {
+      name: 'Z-Score Trend Strategy',
+      description: 'Mean reversion using Z-Score analysis',
+      parameters: { period: 20, threshold: 2 },
+      enabled: true
+    };
   }
 
   calculate(marketData: MarketData[]): StrategyResult {

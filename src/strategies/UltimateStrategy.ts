@@ -1,11 +1,13 @@
+import { BaseStrategy, StrategyConfig, StrategyResult, StrategySignal, MarketData } from '@/types/strategy';
 
-import { StrategyConfig, StrategyResult, StrategySignal, MarketData } from '@/types/strategy';
-
-export class UltimateStrategy {
-  private config: StrategyConfig;
-
-  constructor(config: StrategyConfig) {
-    this.config = config;
+export class UltimateStrategy extends BaseStrategy {
+  getDefaultConfig(): Partial<StrategyConfig> {
+    return {
+      name: 'Ultimate Combined Strategy',
+      description: 'Multi-indicator strategy with RSI, MACD, EMA',
+      parameters: { rsiPeriod: 14, emaShort: 20, emaLong: 50 },
+      enabled: true
+    };
   }
 
   calculate(marketData: MarketData[]): StrategyResult {

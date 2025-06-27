@@ -1,11 +1,14 @@
 
-import { StrategyConfig, StrategyResult, StrategySignal, MarketData } from '@/types/strategy';
+import { BaseStrategy, StrategyConfig, StrategyResult, StrategySignal, MarketData } from '@/types/strategy';
 
-export class LinearRegressionStrategy {
-  private config: StrategyConfig;
-
-  constructor(config: StrategyConfig) {
-    this.config = config;
+export class LinearRegressionStrategy extends BaseStrategy {
+  getDefaultConfig(): Partial<StrategyConfig> {
+    return {
+      name: 'Linear Regression Strategy',
+      description: 'Mean reversion using linear regression analysis',
+      parameters: { lookbackPeriod: 20, threshold: 0.7 },
+      enabled: true
+    };
   }
 
   calculate(marketData: MarketData[]): StrategyResult {

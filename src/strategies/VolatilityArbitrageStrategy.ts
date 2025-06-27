@@ -1,11 +1,13 @@
+import { BaseStrategy, StrategyConfig, StrategyResult, StrategySignal, MarketData } from '@/types/strategy';
 
-import { StrategyConfig, StrategyResult, StrategySignal, MarketData } from '@/types/strategy';
-
-export class VolatilityArbitrageStrategy {
-  private config: StrategyConfig;
-
-  constructor(config: StrategyConfig) {
-    this.config = config;
+export class VolatilityArbitrageStrategy extends BaseStrategy {
+  getDefaultConfig(): Partial<StrategyConfig> {
+    return {
+      name: 'Volatility Arbitrage Strategy',
+      description: 'Exploit volatility mispricing opportunities',
+      parameters: { period: 20, threshold: 0.5 },
+      enabled: true
+    };
   }
 
   calculate(marketData: MarketData[]): StrategyResult {

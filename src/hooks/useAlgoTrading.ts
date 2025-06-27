@@ -1,6 +1,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
-import { TradingEngine, StrategyExecutionConfig, StrategyExecution, ExecutionUpdate } from '@/lib/trading/TradingEngine';
+import { TradingEngine, StrategyExecutionConfig, ExecutionUpdate } from '@/lib/trading/TradingEngine';
+import { StrategyExecution } from '@/lib/trading/StrategyExecution';
 import { toast } from 'sonner';
 
 export interface TradingMetrics {

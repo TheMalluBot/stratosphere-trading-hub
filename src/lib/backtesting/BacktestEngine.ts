@@ -27,7 +27,7 @@ export interface BacktestProgress {
 export class BacktestEngine {
   private workerManager: RobustWorkerManager;
   private database: DatabaseSingleton;
-  private progressCallback?: (progress: BacktestProgress) => void;
+  protected progressCallback?: (progress: BacktestProgress) => void;
   private isRunning = false;
 
   constructor() {
@@ -43,7 +43,7 @@ export class BacktestEngine {
     this.progressCallback = callback;
   }
 
-  private updateProgress(progress: BacktestProgress) {
+  protected updateProgress(progress: BacktestProgress) {
     if (this.progressCallback) {
       this.progressCallback(progress);
     }
@@ -145,7 +145,7 @@ export class BacktestEngine {
     }
   }
 
-  private async loadMarketData(config: BacktestConfig): Promise<MarketData[]> {
+  protected async loadMarketData(config: BacktestConfig): Promise<MarketData[]> {
     try {
       return await this.database.loadMarketData(
         config.symbol,

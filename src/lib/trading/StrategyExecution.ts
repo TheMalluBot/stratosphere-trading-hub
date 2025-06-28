@@ -15,6 +15,7 @@ export class StrategyExecution {
   
   private dataBuffer: MarketData[] = [];
   private strategy: BaseStrategy;
+  private dataUnsubscriber?: () => void;
 
   constructor(executionId: string, strategy: BaseStrategy, config: StrategyExecutionConfig) {
     this.executionId = executionId;
@@ -28,23 +29,30 @@ export class StrategyExecution {
   addMarketData(data: MarketData): void {
     this.dataBuffer.push(data);
     
-    // Keep only last 100 data points
-    if (this.dataBuffer.length > 100) {
+    // Keep only last 200 data points to prevent memory issues
+    if (this.dataBuffer.length > 200) {
       this.dataBuffer.shift();
     }
   }
 
   hasEnoughData(): boolean {
+    // Require at least 50 data points for meaningful analysis
     return this.dataBuffer.length >= 50;
   }
 
   getDataBuffer(): MarketData[] {
-    return this.dataBuffer;
+    return [...this.dataBuffer]; // Return copy to prevent external modification
   }
 
   calculateStrategy() {
     if (!this.hasEnoughData()) return null;
-    return this.strategy.calculate(this.dataBuffer);
+    
+    try {
+      return this.strategy.calculate(this.dataBuffer);
+    } catch (error) {
+      console.error(`Strategy calculation error for ${this.executionId}:`, error);
+      return null;
+    }
   }
 
   updateMetrics(pnl: number, totalTrades: number, winRate: number, lastSignal: string): void {
@@ -54,7 +62,36 @@ export class StrategyExecution {
     this.lastSignal = lastSignal;
   }
 
+  setDataUnsubscriber(unsubscriber: () => void): void {
+    this.dataUnsubscriber = unsubscriber;
+  }
+
   stop(): void {
     this.status = 'stopped';
+    
+    // Unsubscribe from data updates
+    if (this.dataUnsubscriber) {
+      this.dataUnsubscriber();
+    }
+    
+    console.log(`📊 Strategy execution ${this.executionId} stopped`);
+  }
+
+  getExecutionSummary() {
+    const runtime = Date.now() - this.startTime;
+    const runtimeMinutes = Math.floor(runtime / 60000);
+    
+    return {
+      executionId: this.executionId,
+      name: this.name,
+      symbol: this.symbol,
+      status: this.status,
+      runtime: `${runtimeMinutes} minutes`,
+      dataPoints: this.dataBuffer.length,
+      pnl: this.pnl,
+      totalTrades: this.totalTrades,
+      winRate: this.winRate,
+      lastSignal: this.lastSignal
+    };
   }
 }

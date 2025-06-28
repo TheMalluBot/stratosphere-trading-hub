@@ -1,4 +1,3 @@
-
 import { BaseStrategy, StrategySignal, MarketData } from '@/types/strategy';
 import { LinearRegressionStrategy } from '@/strategies/LinearRegressionStrategy';
 import { ZScoreTrendStrategy } from '@/strategies/ZScoreTrendStrategy';
@@ -6,9 +5,10 @@ import { UltimateStrategy } from '@/strategies/UltimateStrategy';
 import { VolatilityArbitrageStrategy } from '@/strategies/VolatilityArbitrageStrategy';
 
 import { RiskManager } from './RiskManager';
-import { DataSimulator } from './DataSimulator';
-import { ExecutionManager } from './ExecutionManager';
+import { RealTimeDataService, RealTimeDataConfig } from '@/services/realTimeDataService';
+import { EnhancedExecutionManager } from './EnhancedExecutionManager';
 import { StrategyExecution } from './StrategyExecution';
+import { HistoricalDataManager } from '@/lib/data/HistoricalDataManager';
 
 export interface StrategyExecutionConfig {
   strategyId: string;
@@ -35,14 +35,34 @@ export class TradingEngine {
   private updateCallbacks: Map<string, (update: ExecutionUpdate) => void> = new Map();
 
   private riskManager: RiskManager;
-  private dataSimulator: DataSimulator;
-  private executionManager: ExecutionManager;
+  private dataService: RealTimeDataService;
+  private executionManager: EnhancedExecutionManager;
+  private historicalDataManager: HistoricalDataManager;
 
   constructor() {
     this.riskManager = new RiskManager();
-    this.dataSimulator = new DataSimulator();
-    this.executionManager = new ExecutionManager();
+    this.executionManager = new EnhancedExecutionManager();
+    this.historicalDataManager = new HistoricalDataManager();
+    
+    // Initialize real-time data service
+    const dataConfig: RealTimeDataConfig = {
+      refreshInterval: 2000, // 2 seconds
+      symbols: ['RELIANCE', 'TCS', 'INFY', 'HDFC', 'ICICIBANK'],
+      enableWebSocket: true
+    };
+    this.dataService = new RealTimeDataService(dataConfig);
+    
     this.initializeStrategies();
+    this.connectDataService();
+  }
+
+  private async connectDataService(): Promise<void> {
+    try {
+      await this.dataService.connect();
+      console.log('✅ Real-time data service connected');
+    } catch (error) {
+      console.error('❌ Failed to connect data service:', error);
+    }
   }
 
   private initializeStrategies() {
@@ -88,19 +108,53 @@ export class TradingEngine {
     }
 
     const executionId = `${config.strategyId}_${Date.now()}`;
-    const execution = new StrategyExecution(executionId, strategy, config);
     
+    // Load historical data for strategy initialization
+    await this.loadHistoricalData(config.symbol, executionId);
+    
+    const execution = new StrategyExecution(executionId, strategy, config);
     this.activeExecutions.set(executionId, execution);
 
-    // Start data simulation for paper trading
-    if (config.paperMode) {
-      this.dataSimulator.startSimulation(config.symbol, (data) => {
-        this.processMarketData(executionId, data);
-      });
-    }
+    // Subscribe to real-time data
+    const unsubscribe = this.dataService.subscribeToRealTime(config.symbol, (data) => {
+      this.processMarketData(executionId, data);
+    });
 
-    console.log(`Strategy ${config.strategyName} started with ID: ${executionId}`);
+    // Store unsubscribe function for cleanup
+    execution.setDataUnsubscriber(unsubscribe);
+
+    console.log(`🚀 Strategy ${config.strategyName} started with ID: ${executionId}`);
     return executionId;
+  }
+
+  private async loadHistoricalData(symbol: string, executionId: string): Promise<void> {
+    try {
+      const endDate = new Date();
+      const startDate = new Date(endDate.getTime() - (30 * 24 * 60 * 60 * 1000)); // 30 days
+      
+      // Try to get from cache first
+      let historicalData = await this.historicalDataManager.getHistoricalData(
+        symbol, '1h', startDate, endDate
+      );
+
+      // If no cached data, fetch from service
+      if (historicalData.length === 0) {
+        console.log(`📊 Loading historical data for ${symbol}...`);
+        historicalData = await this.dataService.getHistoricalData(symbol, '1h', startDate, endDate);
+        
+        // Cache the data
+        await this.historicalDataManager.storeHistoricalData(symbol, '1h', historicalData);
+      }
+
+      // Initialize strategy with historical data
+      const execution = this.activeExecutions.get(executionId);
+      if (execution) {
+        historicalData.forEach(data => execution.addMarketData(data));
+        console.log(`📈 Loaded ${historicalData.length} historical data points for ${symbol}`);
+      }
+    } catch (error) {
+      console.error(`❌ Failed to load historical data for ${symbol}:`, error);
+    }
   }
 
   private processMarketData(executionId: string, marketData: MarketData) {
@@ -123,7 +177,7 @@ export class TradingEngine {
 
     // Check for new signals (signals with current timestamp)
     const newSignals = result.signals.filter((signal: StrategySignal) => 
-      Math.abs(signal.timestamp - currentData.timestamp) < 5000 // Within 5 seconds
+      Math.abs(signal.timestamp - currentData.timestamp) < 10000 // Within 10 seconds
     );
 
     if (newSignals.length > 0) {
@@ -136,14 +190,20 @@ export class TradingEngine {
     const execution = this.activeExecutions.get(executionId);
     if (!execution) return;
 
-    // Execute the signal
-    const trade = this.executionManager.executeSignal(executionId, signal, execution.config);
+    // Execute the signal using enhanced execution manager
+    const { order, trade } = this.executionManager.executeSignal(executionId, signal, execution.config);
     
+    console.log(`📋 Order created: ${order.id} - ${order.side} ${order.quantity} ${order.symbol}`);
+    
+    if (trade) {
+      console.log(`✅ Trade executed: ${trade.id} - P&L: ₹${trade.profit?.toFixed(2) || '0.00'}`);
+    }
+
     // Update execution metrics
     const pnl = this.executionManager.calculatePnL(executionId);
     const totalTrades = this.executionManager.getTrades(executionId).length;
     const winRate = this.executionManager.calculateWinRate(executionId);
-    const lastSignal = `${signal.type} at ₹${signal.price.toFixed(2)}`;
+    const lastSignal = `${signal.type} at ₹${signal.price.toFixed(2)} (${(signal.strength * 100).toFixed(1)}%)`;
 
     execution.updateMetrics(pnl, totalTrades, winRate, lastSignal);
 
@@ -159,8 +219,6 @@ export class TradingEngine {
         lastSignal
       });
     }
-
-    console.log(`Signal processed for ${executionId}: ${signal.type} at ${signal.price}`);
   }
 
   async stopStrategy(executionId: string): Promise<void> {
@@ -170,12 +228,11 @@ export class TradingEngine {
     }
 
     execution.stop();
-    this.dataSimulator.stopSimulation(execution.symbol);
     this.executionManager.cleanup(executionId);
     this.updateCallbacks.delete(executionId);
     this.activeExecutions.delete(executionId);
 
-    console.log(`Strategy ${executionId} stopped`);
+    console.log(`🛑 Strategy ${executionId} stopped`);
   }
 
   getActiveExecutions(): StrategyExecution[] {
@@ -194,7 +251,32 @@ export class TradingEngine {
     return Array.from(this.strategies.entries()).map(([id, strategy]) => ({
       id,
       name: strategy.getName(),
-      description: `${strategy.getName()} - Advanced algorithmic trading strategy`
+      description: `${strategy.getName()} - Advanced algorithmic trading strategy with real data integration`
     }));
+  }
+
+  async getEngineStatus() {
+    const dataConnected = this.dataService.getConnectionStatus();
+    const activeCount = this.getActiveExecutions().length;
+    
+    return {
+      dataService: dataConnected,
+      activeStrategies: activeCount,
+      totalStrategies: this.strategies.size,
+      timestamp: Date.now()
+    };
+  }
+
+  async cleanup(): Promise<void> {
+    // Stop all active strategies
+    const activeIds = Array.from(this.activeExecutions.keys());
+    for (const id of activeIds) {
+      await this.stopStrategy(id);
+    }
+
+    // Disconnect data service
+    this.dataService.disconnect();
+    
+    console.log('🧹 Trading engine cleanup completed');
   }
 }

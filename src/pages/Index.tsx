@@ -103,6 +103,56 @@ const Index = () => {
     }
   ];
 
+  const educationalStrategies = [
+    {
+      title: "Moving Average Strategy",
+      description: "Learn trend-following strategies using simple and exponential moving averages",
+      icon: TrendingUp,
+      status: "Educational Tutorial"
+    },
+    {
+      title: "Mean Reversion",
+      description: "Understand how prices revert to their mean and build strategies around this concept",
+      icon: Target,
+      status: "Learning Module"
+    },
+    {
+      title: "Risk Management",
+      description: "Master position sizing, stop-losses, and portfolio risk management principles",
+      icon: Shield,
+      status: "Safety First"
+    },
+    {
+      title: "Backtesting Basics",
+      description: "Learn how to test trading strategies on historical data to evaluate performance",
+      icon: BarChart3,
+      status: "Simulation Tool"
+    }
+  ];
+
+  const learningFeatures = [
+    {
+      title: "Paper Trading",
+      description: "Practice with virtual money",
+      icon: DollarSign
+    },
+    {
+      title: "Educational Content",
+      description: "Learn trading concepts",
+      icon: BookOpen
+    },
+    {
+      title: "Risk-Free Environment",
+      description: "No real money at risk",
+      icon: Shield
+    },
+    {
+      title: "Progress Tracking",
+      description: "Monitor your learning",
+      icon: Trophy
+    }
+  ];
+
   const testimonials = [
     {
       name: "Alex Chen",

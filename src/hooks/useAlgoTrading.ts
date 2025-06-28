@@ -8,6 +8,18 @@ export interface TradingMetrics {
   totalTrades: number;
   averageWinRate: number;
   activeStrategies: number;
+  portfolioVAR?: number;
+  averageSharpe?: number;
+  riskUtilization?: number;
+}
+
+export interface RiskMetrics {
+  totalCapital: number;
+  totalVAR: number;
+  averageSharpe: number;
+  maxDrawdown: number;
+  activePositions: number;
+  riskUtilization: number;
 }
 
 export function useAlgoTrading() {
@@ -19,6 +31,7 @@ export function useAlgoTrading() {
     averageWinRate: 0,
     activeStrategies: 0
   });
+  const [riskMetrics, setRiskMetrics] = useState<RiskMetrics | null>(null);
 
   const refreshActiveStrategies = useCallback(() => {
     const strategies = tradingEngine.getActiveExecutions();
@@ -37,6 +50,15 @@ export function useAlgoTrading() {
       averageWinRate: avgWinRate,
       activeStrategies: strategies.length
     });
+  }, [tradingEngine]);
+
+  const refreshRiskMetrics = useCallback(async () => {
+    try {
+      const risk = await tradingEngine.getRiskMetrics();
+      setRiskMetrics(risk);
+    } catch (error) {
+      console.error('Failed to refresh risk metrics:', error);
+    }
   }, [tradingEngine]);
 
   const startStrategy = async (config: StrategyExecutionConfig): Promise<string> => {
@@ -85,17 +107,22 @@ export function useAlgoTrading() {
 
   // Refresh active strategies every 5 seconds
   useEffect(() => {
-    const interval = setInterval(refreshActiveStrategies, 5000);
+    const interval = setInterval(() => {
+      refreshActiveStrategies();
+      refreshRiskMetrics();
+    }, 5000);
     return () => clearInterval(interval);
-  }, [refreshActiveStrategies]);
+  }, [refreshActiveStrategies, refreshRiskMetrics]);
 
   return {
     activeStrategies,
     metrics,
+    riskMetrics,
     startStrategy,
     stopStrategy,
     pauseStrategy,
     getAvailableStrategies,
-    tradingEngine
+    tradingEngine,
+    refreshRiskMetrics
   };
 }

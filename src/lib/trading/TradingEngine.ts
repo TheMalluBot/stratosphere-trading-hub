@@ -9,6 +9,7 @@ import { RealTimeDataService, RealTimeDataConfig } from '@/services/realTimeData
 import { EnhancedExecutionManager } from './EnhancedExecutionManager';
 import { StrategyExecution } from './StrategyExecution';
 import { HistoricalDataManager } from '@/lib/data/HistoricalDataManager';
+import { EliteRiskManager } from '@/lib/risk/EliteRiskManager';
 
 export interface StrategyExecutionConfig {
   strategyId: string;
@@ -35,12 +36,14 @@ export class TradingEngine {
   private updateCallbacks: Map<string, (update: ExecutionUpdate) => void> = new Map();
 
   private riskManager: RiskManager;
+  private eliteRiskManager: EliteRiskManager;
   private dataService: RealTimeDataService;
   private executionManager: EnhancedExecutionManager;
   private historicalDataManager: HistoricalDataManager;
 
   constructor() {
     this.riskManager = new RiskManager();
+    this.eliteRiskManager = new EliteRiskManager();
     this.executionManager = new EnhancedExecutionManager();
     this.historicalDataManager = new HistoricalDataManager();
     
@@ -101,7 +104,7 @@ export class TradingEngine {
       throw new Error(`Strategy not found: ${config.strategyId}`);
     }
 
-    // Risk validation
+    // Enhanced risk validation with elite risk manager
     const riskValidation = this.riskManager.validateRisk(config);
     if (!riskValidation.approved) {
       throw new Error(`Risk validation failed: ${riskValidation.reason}`);
@@ -181,33 +184,64 @@ export class TradingEngine {
     );
 
     if (newSignals.length > 0) {
-      const latestSignal = newSignals[newSignals.length - 1];
-      this.processSignal(executionId, latestSignal);
+      // Use elite risk manager for optimal position sizing
+      const portfolioValue = execution.config.capital;
+      const optimalPositions = this.eliteRiskManager.calculateOptimalPositionSizes(
+        newSignals,
+        portfolioValue
+      );
+
+      // Process each optimized signal
+      for (const position of optimalPositions) {
+        this.processOptimizedSignal(executionId, position);
+      }
     }
   }
 
-  private processSignal(executionId: string, signal: StrategySignal) {
+  private processOptimizedSignal(executionId: string, position: any) {
     const execution = this.activeExecutions.get(executionId);
     if (!execution) return;
 
-    // Execute the signal using enhanced execution manager
-    const { order, trade } = this.executionManager.executeSignal(executionId, signal, execution.config);
+    // Update signal with optimized position size
+    const optimizedSignal = {
+      ...position.signal,
+      metadata: {
+        ...position.signal.metadata,
+        optimalPositionSize: position.positionSize,
+        riskContribution: position.riskContribution,
+        kellyFraction: position.kellyFraction
+      }
+    };
+
+    // Execute the optimized signal
+    const { order, trade } = this.executionManager.executeSignal(executionId, optimizedSignal, execution.config);
     
-    console.log(`📋 Order created: ${order.id} - ${order.side} ${order.quantity} ${order.symbol}`);
+    console.log(`📋 Optimized Order: ${order.id} - ${order.side} ${order.quantity} ${order.symbol} (Risk: ${(position.riskContribution * 100).toFixed(2)}%)`);
     
     if (trade) {
       console.log(`✅ Trade executed: ${trade.id} - P&L: ₹${trade.profit?.toFixed(2) || '0.00'}`);
     }
 
-    // Update execution metrics
+    // Update execution metrics with risk-adjusted data
+    this.updateExecutionMetrics(executionId, optimizedSignal, position);
+  }
+
+  private updateExecutionMetrics(executionId: string, signal: StrategySignal, position: any) {
+    const execution = this.activeExecutions.get(executionId);
+    if (!execution) return;
+
     const pnl = this.executionManager.calculatePnL(executionId);
     const totalTrades = this.executionManager.getTrades(executionId).length;
     const winRate = this.executionManager.calculateWinRate(executionId);
-    const lastSignal = `${signal.type} at ₹${signal.price.toFixed(2)} (${(signal.strength * 100).toFixed(1)}%)`;
+    const lastSignal = `${signal.type} at ₹${signal.price.toFixed(2)} (${(signal.strength * 100).toFixed(1)}% | Risk: ${(position.riskContribution * 100).toFixed(2)}%)`;
 
     execution.updateMetrics(pnl, totalTrades, winRate, lastSignal);
 
-    // Notify callback if registered
+    // Calculate portfolio-level risk metrics
+    const portfolioVAR = this.calculatePortfolioVAR(executionId);
+    const sharpeRatio = this.calculateSharpeRatio(executionId);
+
+    // Notify callback with enhanced metrics
     const callback = this.updateCallbacks.get(executionId);
     if (callback) {
       callback({
@@ -216,9 +250,36 @@ export class TradingEngine {
         pnl,
         totalTrades,
         winRate,
-        lastSignal
-      });
+        lastSignal,
+        portfolioVAR,
+        sharpeRatio
+      } as any);
     }
+  }
+
+  private calculatePortfolioVAR(executionId: string): number {
+    const execution = this.activeExecutions.get(executionId);
+    if (!execution) return 0;
+
+    const trades = this.executionManager.getTrades(executionId);
+    const returns = trades.map(trade => (trade.profit || 0) / execution.config.capital);
+    
+    if (returns.length < 10) return 0; // Need minimum data points
+    
+    // Calculate 95% VAR
+    returns.sort((a, b) => a - b);
+    const varIndex = Math.floor(returns.length * 0.05);
+    return Math.abs(returns[varIndex] || 0);
+  }
+
+  private calculateSharpeRatio(executionId: string): number {
+    const execution = this.activeExecutions.get(executionId);
+    if (!execution) return 0;
+
+    const trades = this.executionManager.getTrades(executionId);
+    const returns = trades.map(trade => (trade.profit || 0) / execution.config.capital);
+    
+    return this.eliteRiskManager.calculateSharpeRatio(returns);
   }
 
   async stopStrategy(executionId: string): Promise<void> {
@@ -265,6 +326,36 @@ export class TradingEngine {
       totalStrategies: this.strategies.size,
       timestamp: Date.now()
     };
+  }
+
+  async getRiskMetrics(): Promise<any> {
+    const activeExecutions = this.getActiveExecutions();
+    const totalCapital = activeExecutions.reduce((sum, exec) => sum + exec.config.capital, 0);
+    
+    const riskMetrics = {
+      totalCapital,
+      totalVAR: 0,
+      averageSharpe: 0,
+      maxDrawdown: 0,
+      activePositions: activeExecutions.length,
+      riskUtilization: 0
+    };
+
+    // Calculate aggregate risk metrics
+    for (const execution of activeExecutions) {
+      const var95 = this.calculatePortfolioVAR(execution.executionId);
+      const sharpe = this.calculateSharpeRatio(execution.executionId);
+      
+      riskMetrics.totalVAR += var95 * execution.config.capital;
+      riskMetrics.averageSharpe += sharpe;
+    }
+
+    if (activeExecutions.length > 0) {
+      riskMetrics.averageSharpe /= activeExecutions.length;
+      riskMetrics.riskUtilization = riskMetrics.totalVAR / totalCapital;
+    }
+
+    return riskMetrics;
   }
 
   async cleanup(): Promise<void> {

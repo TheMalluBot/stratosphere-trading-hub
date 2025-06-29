@@ -10,6 +10,10 @@ export class MemoryManager {
     this.setupVisibilityHandler();
   }
 
+  initialize(): void {
+    console.log('🧠 Memory Manager initialized');
+  }
+
   private startMemoryMonitoring() {
     // Check memory usage every 30 seconds
     this.gcTimer = setInterval(() => {

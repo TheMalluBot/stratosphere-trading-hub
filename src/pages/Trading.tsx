@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { TrendingUp, Activity } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -110,15 +111,17 @@ const Trading = () => {
 
   if (isLoading && !isRetrying) {
     return (
-      <div className="flex-1 space-y-6 p-6 overflow-auto custom-scrollbar">
-        <div className="flex items-center justify-between">
-          <TradingChartSkeleton />
-        </div>
-        <div className="grid gap-6 lg:grid-cols-4">
-          <OrderFormSkeleton />
-          <OrderBookSkeleton />
-          <PortfolioSkeleton />
-          <PortfolioSkeleton />
+      <div className="flex-1 h-full overflow-auto">
+        <div className="space-y-6 p-6">
+          <div className="flex items-center justify-between">
+            <TradingChartSkeleton />
+          </div>
+          <div className="grid gap-6 lg:grid-cols-4">
+            <OrderFormSkeleton />
+            <OrderBookSkeleton />
+            <PortfolioSkeleton />
+            <PortfolioSkeleton />
+          </div>
         </div>
       </div>
     );
@@ -126,59 +129,67 @@ const Trading = () => {
 
   return (
     <ErrorBoundary>
-      <div className="flex-1 space-y-6 p-6 overflow-auto custom-scrollbar">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-              <TrendingUp className="w-8 h-8 text-green-500" />
-              Advanced Trading Platform
-              <Badge variant={connectionStatus.live ? "default" : "secondary"} className="ml-2">
-                {connectionStatus.live ? "LIVE" : "DEMO"}
-              </Badge>
-              {isRetrying && (
-                <Badge variant="outline" className="ml-2 animate-pulse">
-                  Connecting...
+      <div className="flex-1 h-full overflow-auto">
+        <div className="space-y-6 p-6">
+          <div className="flex items-center justify-between">
+            <div className="min-w-0 flex-1">
+              <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+                <TrendingUp className="w-6 h-6 text-green-500 flex-shrink-0" />
+                <span className="truncate">Advanced Trading Platform</span>
+                <Badge variant={connectionStatus.live ? "default" : "secondary"} className="ml-2 flex-shrink-0">
+                  {connectionStatus.live ? "LIVE" : "DEMO"}
                 </Badge>
-              )}
-            </h1>
-            <p className="text-muted-foreground">
-              {connectionStatus.live 
-                ? "Execute real trades with MEXC API integration and AI-powered insights" 
-                : "Demo mode with AI analytics - Configure API keys in Settings for live trading"
-              }
-            </p>
-          </div>
-          
-          {/* Enhanced Live Price Display */}
-          <ErrorBoundary fallback={<div className="text-sm text-muted-foreground">Price unavailable</div>}>
-            <LivePriceDisplay 
-              symbol={selectedSymbol} 
-              showVolume={true}
-              showHighLow={true}
-            />
-          </ErrorBoundary>
-        </div>
-
-        {/* Connection Status Alert */}
-        {!connectionStatus.configured && (
-          <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4">
-            <div className="flex items-center gap-2">
-              <Activity className="w-5 h-5 text-yellow-500" />
-              <span className="text-yellow-600 font-medium">Demo Mode Active</span>
+                {isRetrying && (
+                  <Badge variant="outline" className="ml-2 animate-pulse flex-shrink-0">
+                    Connecting...
+                  </Badge>
+                )}
+              </h1>
+              <p className="text-sm text-muted-foreground mt-1">
+                {connectionStatus.live 
+                  ? "Execute real trades with MEXC API integration and AI-powered insights" 
+                  : "Demo mode with AI analytics - Configure API keys in Settings for live trading"
+                }
+              </p>
             </div>
-            <p className="text-sm text-yellow-600 mt-1">
-              Configure your MEXC API keys in Settings to enable live trading
-            </p>
+            
+            {/* Enhanced Live Price Display */}
+            <div className="flex-shrink-0">
+              <ErrorBoundary fallback={<div className="text-sm text-muted-foreground">Price unavailable</div>}>
+                <LivePriceDisplay 
+                  symbol={selectedSymbol} 
+                  showVolume={true}
+                  showHighLow={true}
+                />
+              </ErrorBoundary>
+            </div>
           </div>
-        )}
 
-        {/* Trading Interface */}
-        <TradingTabs 
-          selectedSymbol={selectedSymbol}
-          currentPrice={currentPrice}
-          marketData={marketData}
-          portfolio={portfolio}
-        />
+          {/* Connection Status Alert */}
+          {!connectionStatus.configured && (
+            <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4">
+              <div className="flex items-center gap-2">
+                <Activity className="w-5 h-5 text-yellow-500 flex-shrink-0" />
+                <div>
+                  <span className="text-yellow-600 font-medium">Demo Mode Active</span>
+                  <p className="text-sm text-yellow-600 mt-1">
+                    Configure your MEXC API keys in Settings to enable live trading
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Trading Interface */}
+          <div className="min-h-0 flex-1">
+            <TradingTabs 
+              selectedSymbol={selectedSymbol}
+              currentPrice={currentPrice}
+              marketData={marketData}
+              portfolio={portfolio}
+            />
+          </div>
+        </div>
       </div>
     </ErrorBoundary>
   );

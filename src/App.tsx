@@ -51,27 +51,28 @@ function App() {
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
           <Router>
             <SidebarProvider>
-              <div className="flex h-screen bg-background">
+              <div className="flex h-screen w-full bg-background overflow-hidden">
                 <DesktopIntegration />
-                <TradingLayout />
                 <Routes>
                   <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                  <Route path="/dashboard" element={<Dashboard />} />
-                  <Route path="/tradingview" element={<TradingView />} />
-                  <Route path="/charts" element={<Charts />} />
-                  <Route path="/watchlist" element={<Watchlist />} />
-                  <Route path="/trading" element={<Trading />} />
-                  <Route path="/paper-trading" element={<PaperTrading />} />
-                  <Route path="/algo-trading" element={<AlgoTrading />} />
-                  <Route path="/trading-management" element={<TradingManagement />} />
-                  <Route path="/backtesting" element={<Backtesting />} />
-                  <Route path="/market-intelligence" element={<MarketIntelligence />} />
-                  <Route path="/screener" element={<StockScreener />} />
-                  <Route path="/portfolio-analytics" element={<PortfolioAnalytics />} />
-                  <Route path="/risk-management" element={<RiskManagement />} />
-                  <Route path="/journal" element={<Journal />} />
-                  <Route path="/settings" element={<Settings />} />
-                  <Route path="*" element={<NotFound />} />
+                  <Route path="/*" element={<TradingLayout />}>
+                    <Route path="dashboard" element={<Dashboard />} />
+                    <Route path="tradingview" element={<TradingView />} />
+                    <Route path="charts" element={<Charts />} />
+                    <Route path="watchlist" element={<Watchlist />} />
+                    <Route path="trading" element={<Trading />} />
+                    <Route path="paper-trading" element={<PaperTrading />} />
+                    <Route path="algo-trading" element={<AlgoTrading />} />
+                    <Route path="trading-management" element={<TradingManagement />} />
+                    <Route path="backtesting" element={<Backtesting />} />
+                    <Route path="market-intelligence" element={<MarketIntelligence />} />
+                    <Route path="screener" element={<StockScreener />} />
+                    <Route path="portfolio-analytics" element={<PortfolioAnalytics />} />
+                    <Route path="risk-management" element={<RiskManagement />} />
+                    <Route path="journal" element={<Journal />} />
+                    <Route path="settings" element={<Settings />} />
+                    <Route path="*" element={<NotFound />} />
+                  </Route>
                 </Routes>
               </div>
             </SidebarProvider>

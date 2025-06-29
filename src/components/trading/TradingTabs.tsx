@@ -1,247 +1,178 @@
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BarChart3, Brain, Zap, DollarSign, TestTube, Bot, Activity } from "lucide-react";
-import ErrorBoundary from "@/components/error/ErrorBoundary";
-import { TradingChartSkeleton, OrderFormSkeleton, PortfolioSkeleton, OrderBookSkeleton } from "@/components/loading/LoadingStates";
-import TradingChart from "./TradingChart";
-import AdvancedOrderForm from "./AdvancedOrderForm";
-import SmartExecution from "./SmartExecution";
-import OrderForm from "./OrderForm";
-import RealTimeOrderBook from "./RealTimeOrderBook";
-import PositionTracker from "./PositionTracker";
-import TradingHistory from "./TradingHistory";
-import AIInsightsDashboard from "@/components/ai/AIInsightsDashboard";
-import SmartOrderManagement from "./SmartOrderManagement";
-import HighPerformanceAnalytics from "./HighPerformanceAnalytics";
-import { useState } from "react";
-import { ConfigurationForm } from "@/components/backtesting/ConfigurationForm";
-import { BacktestResults } from "@/components/backtesting/BacktestResults";
+import { TradingDashboard } from "./TradingDashboard";
 import { StrategyBuilder } from "@/components/algo/StrategyBuilder";
-import { StrategySelector } from "./StrategySelector";
+import { StrategyMarketplace } from "./StrategyMarketplace";
+import { StrategyCommunityHub } from "./StrategyCommunityHub";
 import { OnboardingGuide } from "./OnboardingGuide";
-import { StrategyPerformanceChart } from "./StrategyPerformanceChart";
+import { useState } from "react";
+import { 
+  BarChart3, 
+  Bot, 
+  Store, 
+  Users, 
+  BookOpen,
+  TrendingUp,
+  DollarSign,
+  Activity
+} from "lucide-react";
 
 interface TradingTabsProps {
   selectedSymbol: string;
   currentPrice: number;
-  marketData: any[];
-  portfolio: any[];
   tradingMode: 'live' | 'paper' | 'algo' | 'backtest';
+  connectionStatus: { live: boolean; configured: boolean };
 }
 
-export const TradingTabs = ({ selectedSymbol, currentPrice, marketData, portfolio, tradingMode }: TradingTabsProps) => {
-  // Backtesting state
-  const [symbol, setSymbol] = useState("BTCUSDT");
-  const [timeframe, setTimeframe] = useState("1D");
-  const [startDate, setStartDate] = useState("2023-01-01");
-  const [endDate, setEndDate] = useState("2024-01-01");
-  const [initialCapital, setInitialCapital] = useState("100000");
-  const [backtestResults, setBacktestResults] = useState(null);
-  const [selectedStrategy, setSelectedStrategy] = useState("linear-regression");
+export const TradingTabs = ({ 
+  selectedSymbol, 
+  currentPrice, 
+  tradingMode, 
+  connectionStatus 
+}: TradingTabsProps) => {
   const [showOnboarding, setShowOnboarding] = useState(true);
-
-  // Sample performance data for strategy visualization
-  const samplePerformanceData = [
-    { timestamp: '2024-01-01', pnl: 0, cumulativePnl: 0, trades: 0 },
-    { timestamp: '2024-01-15', pnl: 250, cumulativePnl: 250, trades: 5 },
-    { timestamp: '2024-02-01', pnl: -150, cumulativePnl: 100, trades: 8 },
-    { timestamp: '2024-02-15', pnl: 400, cumulativePnl: 500, trades: 12 },
-    { timestamp: '2024-03-01', pnl: 200, cumulativePnl: 700, trades: 18 },
-  ];
-
-  const renderTradingContent = () => (
-    <div className="space-y-6">
-      {/* Onboarding Guide */}
-      {showOnboarding && (
-        <OnboardingGuide 
-          tradingMode={tradingMode}
-          onClose={() => setShowOnboarding(false)}
-        />
-      )}
-
-      {/* Trading Chart - Full Width */}
-      <ErrorBoundary fallback={<TradingChartSkeleton />}>
-        <div className="w-full">
-          <TradingChart symbol={selectedSymbol} />
-        </div>
-      </ErrorBoundary>
-
-      {/* Advanced Trading Features */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        <ErrorBoundary fallback={<OrderFormSkeleton />}>
-          <AdvancedOrderForm 
-            symbol={selectedSymbol} 
-            currentPrice={currentPrice}
-            tradingMode={tradingMode}
-          />
-        </ErrorBoundary>
-        <ErrorBoundary>
-          <SmartExecution />
-        </ErrorBoundary>
-      </div>
-
-      {/* Trading Interface Grid */}
-      <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
-        <ErrorBoundary fallback={<OrderFormSkeleton />}>
-          <OrderForm 
-            selectedSymbol={selectedSymbol} 
-            currentPrice={currentPrice}
-          />
-        </ErrorBoundary>
-
-        <ErrorBoundary fallback={<OrderBookSkeleton />}>
-          <RealTimeOrderBook symbol={selectedSymbol} />
-        </ErrorBoundary>
-
-        <ErrorBoundary fallback={<PortfolioSkeleton />}>
-          <PositionTracker />
-        </ErrorBoundary>
-
-        <ErrorBoundary>
-          <TradingHistory />
-        </ErrorBoundary>
-      </div>
-    </div>
-  );
-
-  const renderAlgoContent = () => (
-    <div className="space-y-6">
-      {/* Onboarding Guide */}
-      {showOnboarding && (
-        <OnboardingGuide 
-          tradingMode={tradingMode}
-          onClose={() => setShowOnboarding(false)}
-        />
-      )}
-
-      {/* Strategy Performance Visualization */}
-      <StrategyPerformanceChart
-        strategyName="Active Strategy Performance"
-        data={samplePerformanceData}
-        totalReturn={15.2}
-        winRate={68.5}
-      />
-
-      <ErrorBoundary>
-        <StrategyBuilder />
-      </ErrorBoundary>
-      {renderTradingContent()}
-    </div>
-  );
-
-  const renderBacktestContent = () => (
-    <div className="space-y-6">
-      {/* Onboarding Guide */}
-      {showOnboarding && (
-        <OnboardingGuide 
-          tradingMode={tradingMode}
-          onClose={() => setShowOnboarding(false)}
-        />
-      )}
-
-      <div className="grid gap-6 lg:grid-cols-2">
-        <ErrorBoundary>
-          <ConfigurationForm
-            symbol={symbol}
-            setSymbol={setSymbol}
-            timeframe={timeframe}
-            setTimeframe={setTimeframe}
-            startDate={startDate}
-            setStartDate={setStartDate}
-            endDate={endDate}
-            setEndDate={setEndDate}
-            initialCapital={initialCapital}
-            setInitialCapital={setInitialCapital}
-          />
-        </ErrorBoundary>
-        <ErrorBoundary>
-          <BacktestResults
-            backtestResults={backtestResults}
-            symbol={symbol}
-            selectedStrategy={selectedStrategy}
-          />
-        </ErrorBoundary>
-      </div>
-      
-      {/* Backtest Performance Visualization */}
-      <StrategyPerformanceChart
-        strategyName="Backtest Results"
-        data={samplePerformanceData}
-        totalReturn={22.8}
-        winRate={72.3}
-      />
-      
-      {renderTradingContent()}
-    </div>
-  );
-
-  const getMainContent = () => {
-    switch (tradingMode) {
-      case 'algo':
-        return renderAlgoContent();
-      case 'backtest':
-        return renderBacktestContent();
-      default:
-        return renderTradingContent();
-    }
-  };
+  const [activeTab, setActiveTab] = useState("dashboard");
 
   return (
-    <div className="flex flex-col h-full min-h-0">
-      <Tabs defaultValue="trading" className="flex flex-col h-full min-h-0">
-        <TabsList className="grid w-full grid-cols-4 flex-shrink-0 mb-6">
-          <TabsTrigger value="trading" className="flex items-center gap-2">
+    <div className="space-y-6">
+      {/* Onboarding Guide */}
+      {showOnboarding && (
+        <OnboardingGuide 
+          tradingMode={tradingMode}
+          onClose={() => setShowOnboarding(false)}
+        />
+      )}
+
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <TabsList className="grid w-full grid-cols-5 h-12">
+          <TabsTrigger value="dashboard" className="flex items-center gap-2">
             <BarChart3 className="w-4 h-4" />
-            <span className="hidden sm:inline">Trading</span>
+            Dashboard
           </TabsTrigger>
-          <TabsTrigger value="ai-insights" className="flex items-center gap-2">
-            <Brain className="w-4 h-4" />
-            <span className="hidden sm:inline">AI Insights</span>
+          <TabsTrigger value="strategies" className="flex items-center gap-2">
+            <Bot className="w-4 h-4" />
+            Strategy Builder
           </TabsTrigger>
-          <TabsTrigger value="smart-orders" className="flex items-center gap-2">
-            <Zap className="w-4 h-4" />
-            <span className="hidden sm:inline">Smart Orders</span>
+          <TabsTrigger value="marketplace" className="flex items-center gap-2">
+            <Store className="w-4 h-4" />
+            Marketplace
+          </TabsTrigger>
+          <TabsTrigger value="community" className="flex items-center gap-2">
+            <Users className="w-4 h-4" />
+            Community
           </TabsTrigger>
           <TabsTrigger value="analytics" className="flex items-center gap-2">
-            <DollarSign className="w-4 h-4" />
-            <span className="hidden sm:inline">Analytics</span>
+            <TrendingUp className="w-4 h-4" />
+            Analytics
           </TabsTrigger>
         </TabsList>
 
-        <div className="flex-1 min-h-0 overflow-hidden">
-          <TabsContent value="trading" className="h-full overflow-auto space-y-6 mt-0">
-            {getMainContent()}
-          </TabsContent>
+        <TabsContent value="dashboard" className="space-y-6">
+          <TradingDashboard
+            selectedSymbol={selectedSymbol}
+            currentPrice={currentPrice}
+            tradingMode={tradingMode}
+            connectionStatus={connectionStatus}
+          />
+        </TabsContent>
 
-          <TabsContent value="ai-insights" className="h-full overflow-auto mt-0">
-            <ErrorBoundary>
-              <AIInsightsDashboard 
-                symbol={selectedSymbol} 
-                marketData={marketData}
-                portfolio={portfolio}
-              />
-            </ErrorBoundary>
-          </TabsContent>
+        <TabsContent value="strategies" className="space-y-6">
+          <StrategyBuilder />
+        </TabsContent>
 
-          <TabsContent value="smart-orders" className="h-full overflow-auto mt-0">
-            <ErrorBoundary>
-              <SmartOrderManagement 
-                symbol={selectedSymbol} 
-                currentPrice={currentPrice}
-              />
-            </ErrorBoundary>
-          </TabsContent>
+        <TabsContent value="marketplace" className="space-y-6">
+          <StrategyMarketplace />
+        </TabsContent>
 
-          <TabsContent value="analytics" className="h-full overflow-auto mt-0">
-            <ErrorBoundary>
-              <HighPerformanceAnalytics 
-                symbol={selectedSymbol} 
-                prices={marketData.map(d => d.close)} 
-                volumes={marketData.map(d => d.volume)}
-              />
-            </ErrorBoundary>
-          </TabsContent>
-        </div>
+        <TabsContent value="community" className="space-y-6">
+          <StrategyCommunityHub />
+        </TabsContent>
+
+        <TabsContent value="analytics" className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-gradient-to-br from-green-50 to-green-100 p-6 rounded-lg border border-green-200">
+              <div className="flex items-center justify-between mb-2">
+                <DollarSign className="w-8 h-8 text-green-600" />
+                <span className="text-sm text-green-600 font-medium">Total P&L</span>
+              </div>
+              <div className="text-2xl font-bold text-green-700">$12,847.32</div>
+              <div className="text-sm text-green-600">+15.3% this month</div>
+            </div>
+
+            <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-lg border border-blue-200">
+              <div className="flex items-center justify-between mb-2">
+                <Activity className="w-8 h-8 text-blue-600" />
+                <span className="text-sm text-blue-600 font-medium">Active Strategies</span>
+              </div>
+              <div className="text-2xl font-bold text-blue-700">7</div>
+              <div className="text-sm text-blue-600">3 outperforming</div>
+            </div>
+
+            <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-6 rounded-lg border border-purple-200">
+              <div className="flex items-center justify-between mb-2">
+                <TrendingUp className="w-8 h-8 text-purple-600" />
+                <span className="text-sm text-purple-600 font-medium">Win Rate</span>
+              </div>
+              <div className="text-2xl font-bold text-purple-700">68.4%</div>
+              <div className="text-sm text-purple-600">Above average</div>
+            </div>
+
+            <div className="bg-gradient-to-br from-orange-50 to-orange-100 p-6 rounded-lg border border-orange-200">
+              <div className="flex items-center justify-between mb-2">
+                <BookOpen className="w-8 h-8 text-orange-600" />
+                <span className="text-sm text-orange-600 font-medium">Learning Progress</span>
+              </div>
+              <div className="text-2xl font-bold text-orange-700">78%</div>
+              <div className="text-sm text-orange-600">Advanced level</div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="bg-white p-6 rounded-lg border">
+              <h3 className="text-lg font-semibold mb-4">Performance Overview</h3>
+              <div className="space-y-3">
+                <div className="flex justify-between">
+                  <span>Total Trades</span>
+                  <span className="font-semibold">1,247</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Profitable Trades</span>
+                  <span className="font-semibold text-green-600">853</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Average Trade Duration</span>
+                  <span className="font-semibold">2.3 hours</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Sharpe Ratio</span>
+                  <span className="font-semibold">1.84</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white p-6 rounded-lg border">
+              <h3 className="text-lg font-semibold mb-4">Risk Metrics</h3>
+              <div className="space-y-3">
+                <div className="flex justify-between">
+                  <span>Max Drawdown</span>
+                  <span className="font-semibold text-red-600">-8.2%</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Value at Risk (95%)</span>
+                  <span className="font-semibold">$1,234</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Risk/Reward Ratio</span>
+                  <span className="font-semibold">1:2.1</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Portfolio Volatility</span>
+                  <span className="font-semibold">12.8%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </TabsContent>
       </Tabs>
     </div>
   );

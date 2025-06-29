@@ -12,13 +12,6 @@ export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
     mode === 'development' && componentTagger(),
-    // Add obfuscation plugin for production builds
-    mode === 'production' && {
-      name: 'code-protection',
-      generateBundle() {
-        console.log('🔒 Production build - Security features enabled');
-      }
-    }
   ].filter(Boolean),
   resolve: {
     alias: {
@@ -31,12 +24,6 @@ export default defineConfig(({ mode }) => ({
       compress: {
         drop_console: mode === 'production',
         drop_debugger: true,
-        pure_funcs: mode === 'production' ? ['console.log', 'console.warn'] : []
-      },
-      mangle: {
-        properties: {
-          regex: /^_/
-        }
       },
       format: {
         comments: false
@@ -46,7 +33,6 @@ export default defineConfig(({ mode }) => ({
       output: {
         manualChunks: {
           vendor: ['react', 'react-dom'],
-          security: ['crypto-js'],
           trading: ['recharts']
         }
       }
@@ -54,6 +40,5 @@ export default defineConfig(({ mode }) => ({
   },
   define: {
     __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
-    __SECURITY_ENABLED__: mode === 'production'
   }
 }));

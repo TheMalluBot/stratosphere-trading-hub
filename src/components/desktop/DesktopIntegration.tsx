@@ -7,16 +7,16 @@ export function DesktopIntegration() {
   const { showNotification } = useDesktopIntegration();
 
   useEffect(() => {
-    console.log('🌐 AlgoTrade Pro - Advanced Security & Performance Mode');
+    console.log('🌐 AlgoTrade Pro - Advanced Trading Platform');
     
-    const initializeAdvancedSystems = async () => {
+    const initializeBasicSystems = async () => {
       try {
-        // Initialize high-performance manager with security systems
+        // Initialize high-performance manager without security systems
         await highPerformanceManager.initialize();
         
         showNotification(
           'AlgoTrade Pro', 
-          '🔒 Secure trading platform loaded with advanced protection!'
+          '🚀 Trading platform loaded successfully!'
         );
         
         // Monitor performance
@@ -31,15 +31,15 @@ export function DesktopIntegration() {
           window.removeEventListener('performanceUpdate', handlePerformanceUpdate as EventListener);
         };
       } catch (error) {
-        console.error('❌ Failed to initialize advanced systems:', error);
+        console.error('❌ Failed to initialize systems:', error);
         showNotification(
           'AlgoTrade Pro', 
-          '⚠️ Some advanced features may not be available'
+          '⚠️ Some features may not be available'
         );
       }
     };
 
-    initializeAdvancedSystems();
+    initializeBasicSystems();
 
     return () => {
       highPerformanceManager.cleanup();

@@ -1,4 +1,3 @@
-
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BarChart3, Brain, Zap, DollarSign, TestTube, Bot, Activity } from "lucide-react";
 import ErrorBoundary from "@/components/error/ErrorBoundary";
@@ -14,12 +13,8 @@ import AIInsightsDashboard from "@/components/ai/AIInsightsDashboard";
 import SmartOrderManagement from "./SmartOrderManagement";
 import HighPerformanceAnalytics from "./HighPerformanceAnalytics";
 import { useState } from "react";
-
-// Import backtesting components
 import { ConfigurationForm } from "@/components/backtesting/ConfigurationForm";
 import { BacktestResults } from "@/components/backtesting/BacktestResults";
-
-// Import algo trading components
 import { StrategyBuilder } from "@/components/algo/StrategyBuilder";
 
 interface TradingTabsProps {
@@ -41,7 +36,7 @@ export const TradingTabs = ({ selectedSymbol, currentPrice, marketData, portfoli
   const [selectedStrategy, setSelectedStrategy] = useState("linear-regression");
 
   const renderTradingContent = () => (
-    <>
+    <div className="space-y-6">
       {/* Trading Chart - Full Width */}
       <ErrorBoundary fallback={<TradingChartSkeleton />}>
         <div className="w-full">
@@ -84,7 +79,7 @@ export const TradingTabs = ({ selectedSymbol, currentPrice, marketData, portfoli
           <TradingHistory />
         </ErrorBoundary>
       </div>
-    </>
+    </div>
   );
 
   const renderAlgoContent = () => (
@@ -139,7 +134,7 @@ export const TradingTabs = ({ selectedSymbol, currentPrice, marketData, portfoli
   return (
     <div className="flex flex-col h-full min-h-0">
       <Tabs defaultValue="trading" className="flex flex-col h-full min-h-0">
-        <TabsList className="grid w-full grid-cols-4 flex-shrink-0">
+        <TabsList className="grid w-full grid-cols-4 flex-shrink-0 mb-6">
           <TabsTrigger value="trading" className="flex items-center gap-2">
             <BarChart3 className="w-4 h-4" />
             <span className="hidden sm:inline">Trading</span>
@@ -159,11 +154,11 @@ export const TradingTabs = ({ selectedSymbol, currentPrice, marketData, portfoli
         </TabsList>
 
         <div className="flex-1 min-h-0 overflow-hidden">
-          <TabsContent value="trading" className="h-full overflow-auto space-y-6 mt-6">
+          <TabsContent value="trading" className="h-full overflow-auto space-y-6 mt-0">
             {getMainContent()}
           </TabsContent>
 
-          <TabsContent value="ai-insights" className="h-full overflow-auto mt-6">
+          <TabsContent value="ai-insights" className="h-full overflow-auto mt-0">
             <ErrorBoundary>
               <AIInsightsDashboard 
                 symbol={selectedSymbol} 
@@ -173,7 +168,7 @@ export const TradingTabs = ({ selectedSymbol, currentPrice, marketData, portfoli
             </ErrorBoundary>
           </TabsContent>
 
-          <TabsContent value="smart-orders" className="h-full overflow-auto mt-6">
+          <TabsContent value="smart-orders" className="h-full overflow-auto mt-0">
             <ErrorBoundary>
               <SmartOrderManagement 
                 symbol={selectedSymbol} 
@@ -182,7 +177,7 @@ export const TradingTabs = ({ selectedSymbol, currentPrice, marketData, portfoli
             </ErrorBoundary>
           </TabsContent>
 
-          <TabsContent value="analytics" className="h-full overflow-auto mt-6">
+          <TabsContent value="analytics" className="h-full overflow-auto mt-0">
             <ErrorBoundary>
               <HighPerformanceAnalytics 
                 symbol={selectedSymbol} 

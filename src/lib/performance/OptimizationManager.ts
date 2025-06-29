@@ -4,10 +4,32 @@ export class OptimizationManager {
   private isVisible = true;
   private performanceObserver: PerformanceObserver | null = null;
   private workers: Worker[] = [];
+  private isInitialized = false;
 
   constructor() {
     this.setupVisibilityAPI();
     this.setupPerformanceMonitoring();
+  }
+
+  // Add missing initialize method
+  initialize(): void {
+    if (this.isInitialized) return;
+    
+    this.initializeWebWorkers();
+    this.optimizeRendering();
+    this.isInitialized = true;
+    console.log('🔧 Optimization Manager initialized');
+  }
+
+  // Add missing getOptimizationStatus method
+  getOptimizationStatus(): any {
+    return {
+      initialized: this.isInitialized,
+      workersActive: this.workers.length,
+      renderingOptimized: this.animationFrame !== null,
+      visibilityTracking: true,
+      performanceMonitoring: this.performanceObserver !== null
+    };
   }
 
   private setupVisibilityAPI() {
@@ -148,6 +170,7 @@ export class OptimizationManager {
       worker.terminate();
     });
     this.workers = [];
+    this.isInitialized = false;
   }
 }
 

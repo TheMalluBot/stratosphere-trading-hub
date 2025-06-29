@@ -1,4 +1,3 @@
-
 // Enhanced WebAssembly engine for high-performance calculations
 export class WebAssemblyEngine {
   private wasmModule: any = null;
@@ -17,6 +16,21 @@ export class WebAssemblyEngine {
       console.error('Failed to initialize WASM engine:', error);
       throw error;
     }
+  }
+
+  // Add missing getStatus method
+  getStatus(): any {
+    return {
+      initialized: this.initialized,
+      memoryAllocated: this.memoryBuffer ? this.memoryBuffer.byteLength : 0,
+      moduleLoaded: this.wasmModule !== null,
+      performance: 'optimized'
+    };
+  }
+
+  // Add missing cleanup method
+  cleanup(): void {
+    this.dispose();
   }
 
   private async createOptimizedJSEngine() {

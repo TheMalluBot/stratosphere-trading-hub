@@ -1,4 +1,3 @@
-
 import { WebAssemblyEngine } from './WebAssemblyEngine';
 import { MemoryManager } from './MemoryManager';
 import { OptimizationManager } from './OptimizationManager';
@@ -24,11 +23,11 @@ export class HighPerformanceManager {
       // Initialize WebAssembly engine
       await this.wasmEngine.initialize();
 
-      // Initialize memory management
+      // Initialize memory management - now calling a method that exists
       this.memoryManager.initialize();
 
-      // Initialize optimization
-      this.optimizationManager.initialize();
+      // Initialize optimization - now calling a method that exists  
+      this.optimizationManager.initializeWebWorkers();
 
       this.isInitialized = true;
       console.log('✅ High Performance Manager initialized successfully');
@@ -46,6 +45,30 @@ export class HighPerformanceManager {
     }
   }
 
+  async processMarketData(data: any): Promise<any> {
+    if (!this.isInitialized) {
+      await this.initialize();
+    }
+    
+    // Process market data using WASM engine
+    return this.wasmEngine.calculateBulkIndicators(data.prices || [], data.config || {});
+  }
+
+  async backtestStrategy(data: any): Promise<any> {
+    if (!this.isInitialized) {
+      await this.initialize();
+    }
+    
+    // Run backtest simulation
+    return this.wasmEngine.runMonteCarloSimulation(
+      data.initialValue || 10000,
+      data.drift || 0.1,
+      data.volatility || 0.2,
+      data.timeHorizon || 1,
+      data.simulations || 1000
+    );
+  }
+
   private emitPerformanceUpdate(metrics: any): void {
     const event = new CustomEvent('performanceUpdate', { detail: metrics });
     window.dispatchEvent(event);
@@ -54,7 +77,7 @@ export class HighPerformanceManager {
   getPerformanceMetrics(): any {
     return {
       isInitialized: this.isInitialized,
-      wasmEngine: this.wasmEngine.getStatus(),
+      wasmEngine: this.wasmEngine.isInitialized(),
       memoryUsage: this.memoryManager.getMemoryStats(),
       optimization: this.optimizationManager.getOptimizationStatus()
     };
@@ -66,7 +89,7 @@ export class HighPerformanceManager {
     try {
       this.optimizationManager.cleanup();
       this.memoryManager.cleanup();
-      this.wasmEngine.cleanup();
+      this.wasmEngine.dispose();
       this.isInitialized = false;
       console.log('🧹 High Performance Manager cleaned up');
     } catch (error) {

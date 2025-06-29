@@ -18,6 +18,8 @@ import { ConfigurationForm } from "@/components/backtesting/ConfigurationForm";
 import { BacktestResults } from "@/components/backtesting/BacktestResults";
 import { StrategyBuilder } from "@/components/algo/StrategyBuilder";
 import { StrategySelector } from "./StrategySelector";
+import { OnboardingGuide } from "./OnboardingGuide";
+import { StrategyPerformanceChart } from "./StrategyPerformanceChart";
 
 interface TradingTabsProps {
   selectedSymbol: string;
@@ -36,9 +38,27 @@ export const TradingTabs = ({ selectedSymbol, currentPrice, marketData, portfoli
   const [initialCapital, setInitialCapital] = useState("100000");
   const [backtestResults, setBacktestResults] = useState(null);
   const [selectedStrategy, setSelectedStrategy] = useState("linear-regression");
+  const [showOnboarding, setShowOnboarding] = useState(true);
+
+  // Sample performance data for strategy visualization
+  const samplePerformanceData = [
+    { timestamp: '2024-01-01', pnl: 0, cumulativePnl: 0, trades: 0 },
+    { timestamp: '2024-01-15', pnl: 250, cumulativePnl: 250, trades: 5 },
+    { timestamp: '2024-02-01', pnl: -150, cumulativePnl: 100, trades: 8 },
+    { timestamp: '2024-02-15', pnl: 400, cumulativePnl: 500, trades: 12 },
+    { timestamp: '2024-03-01', pnl: 200, cumulativePnl: 700, trades: 18 },
+  ];
 
   const renderTradingContent = () => (
     <div className="space-y-6">
+      {/* Onboarding Guide */}
+      {showOnboarding && (
+        <OnboardingGuide 
+          tradingMode={tradingMode}
+          onClose={() => setShowOnboarding(false)}
+        />
+      )}
+
       {/* Trading Chart - Full Width */}
       <ErrorBoundary fallback={<TradingChartSkeleton />}>
         <div className="w-full">
@@ -86,6 +106,22 @@ export const TradingTabs = ({ selectedSymbol, currentPrice, marketData, portfoli
 
   const renderAlgoContent = () => (
     <div className="space-y-6">
+      {/* Onboarding Guide */}
+      {showOnboarding && (
+        <OnboardingGuide 
+          tradingMode={tradingMode}
+          onClose={() => setShowOnboarding(false)}
+        />
+      )}
+
+      {/* Strategy Performance Visualization */}
+      <StrategyPerformanceChart
+        strategyName="Active Strategy Performance"
+        data={samplePerformanceData}
+        totalReturn={15.2}
+        winRate={68.5}
+      />
+
       <ErrorBoundary>
         <StrategyBuilder />
       </ErrorBoundary>
@@ -95,6 +131,14 @@ export const TradingTabs = ({ selectedSymbol, currentPrice, marketData, portfoli
 
   const renderBacktestContent = () => (
     <div className="space-y-6">
+      {/* Onboarding Guide */}
+      {showOnboarding && (
+        <OnboardingGuide 
+          tradingMode={tradingMode}
+          onClose={() => setShowOnboarding(false)}
+        />
+      )}
+
       <div className="grid gap-6 lg:grid-cols-2">
         <ErrorBoundary>
           <ConfigurationForm
@@ -118,6 +162,15 @@ export const TradingTabs = ({ selectedSymbol, currentPrice, marketData, portfoli
           />
         </ErrorBoundary>
       </div>
+      
+      {/* Backtest Performance Visualization */}
+      <StrategyPerformanceChart
+        strategyName="Backtest Results"
+        data={samplePerformanceData}
+        totalReturn={22.8}
+        winRate={72.3}
+      />
+      
       {renderTradingContent()}
     </div>
   );

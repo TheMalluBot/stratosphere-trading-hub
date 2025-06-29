@@ -13,6 +13,7 @@ import TradingHistory from "./TradingHistory";
 import AIInsightsDashboard from "@/components/ai/AIInsightsDashboard";
 import SmartOrderManagement from "./SmartOrderManagement";
 import HighPerformanceAnalytics from "./HighPerformanceAnalytics";
+import { useState } from "react";
 
 // Import backtesting components
 import { ConfigurationForm } from "@/components/backtesting/ConfigurationForm";
@@ -30,6 +31,15 @@ interface TradingTabsProps {
 }
 
 export const TradingTabs = ({ selectedSymbol, currentPrice, marketData, portfolio, tradingMode }: TradingTabsProps) => {
+  // Backtesting state
+  const [symbol, setSymbol] = useState("BTCUSDT");
+  const [timeframe, setTimeframe] = useState("1D");
+  const [startDate, setStartDate] = useState("2023-01-01");
+  const [endDate, setEndDate] = useState("2024-01-01");
+  const [initialCapital, setInitialCapital] = useState("100000");
+  const [backtestResults, setBacktestResults] = useState(null);
+  const [selectedStrategy, setSelectedStrategy] = useState("linear-regression");
+
   const renderTradingContent = () => (
     <>
       {/* Trading Chart - Full Width */}
@@ -49,7 +59,7 @@ export const TradingTabs = ({ selectedSymbol, currentPrice, marketData, portfoli
           />
         </ErrorBoundary>
         <ErrorBoundary>
-          <SmartExecution tradingMode={tradingMode} />
+          <SmartExecution />
         </ErrorBoundary>
       </div>
 
@@ -59,7 +69,6 @@ export const TradingTabs = ({ selectedSymbol, currentPrice, marketData, portfoli
           <OrderForm 
             selectedSymbol={selectedSymbol} 
             currentPrice={currentPrice}
-            tradingMode={tradingMode}
           />
         </ErrorBoundary>
 
@@ -68,11 +77,11 @@ export const TradingTabs = ({ selectedSymbol, currentPrice, marketData, portfoli
         </ErrorBoundary>
 
         <ErrorBoundary fallback={<PortfolioSkeleton />}>
-          <PositionTracker tradingMode={tradingMode} />
+          <PositionTracker />
         </ErrorBoundary>
 
         <ErrorBoundary>
-          <TradingHistory tradingMode={tradingMode} />
+          <TradingHistory />
         </ErrorBoundary>
       </div>
     </>
@@ -91,10 +100,25 @@ export const TradingTabs = ({ selectedSymbol, currentPrice, marketData, portfoli
     <div className="space-y-6">
       <div className="grid gap-6 lg:grid-cols-2">
         <ErrorBoundary>
-          <ConfigurationForm />
+          <ConfigurationForm
+            symbol={symbol}
+            setSymbol={setSymbol}
+            timeframe={timeframe}
+            setTimeframe={setTimeframe}
+            startDate={startDate}
+            setStartDate={setStartDate}
+            endDate={endDate}
+            setEndDate={setEndDate}
+            initialCapital={initialCapital}
+            setInitialCapital={setInitialCapital}
+          />
         </ErrorBoundary>
         <ErrorBoundary>
-          <BacktestResults />
+          <BacktestResults
+            backtestResults={backtestResults}
+            symbol={symbol}
+            selectedStrategy={selectedStrategy}
+          />
         </ErrorBoundary>
       </div>
       {renderTradingContent()}
@@ -145,7 +169,6 @@ export const TradingTabs = ({ selectedSymbol, currentPrice, marketData, portfoli
                 symbol={selectedSymbol} 
                 marketData={marketData}
                 portfolio={portfolio}
-                tradingMode={tradingMode}
               />
             </ErrorBoundary>
           </TabsContent>
@@ -155,7 +178,6 @@ export const TradingTabs = ({ selectedSymbol, currentPrice, marketData, portfoli
               <SmartOrderManagement 
                 symbol={selectedSymbol} 
                 currentPrice={currentPrice}
-                tradingMode={tradingMode}
               />
             </ErrorBoundary>
           </TabsContent>
@@ -166,7 +188,6 @@ export const TradingTabs = ({ selectedSymbol, currentPrice, marketData, portfoli
                 symbol={selectedSymbol} 
                 prices={marketData.map(d => d.close)} 
                 volumes={marketData.map(d => d.volume)}
-                tradingMode={tradingMode}
               />
             </ErrorBoundary>
           </TabsContent>

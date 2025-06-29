@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,9 +14,10 @@ import { Settings, Target, Shield, TrendingUp, AlertTriangle } from "lucide-reac
 interface AdvancedOrderFormProps {
   symbol: string;
   currentPrice: number;
+  tradingMode?: 'live' | 'paper' | 'algo' | 'backtest';
 }
 
-const AdvancedOrderForm = ({ symbol, currentPrice }: AdvancedOrderFormProps) => {
+const AdvancedOrderForm = ({ symbol, currentPrice, tradingMode = 'live' }: AdvancedOrderFormProps) => {
   const [orderType, setOrderType] = useState<"market" | "limit" | "stop" | "trailing" | "iceberg">("limit");
   const [side, setSide] = useState<"buy" | "sell">("buy");
   const [quantity, setQuantity] = useState("");
@@ -54,11 +54,12 @@ const AdvancedOrderForm = ({ symbol, currentPrice }: AdvancedOrderFormProps) => 
         postOnly,
         reduceOnly,
         stopLoss: useStopLoss ? parseFloat(stopLossPrice) : undefined,
-        takeProfit: useTakeProfit ? parseFloat(takeProfitPrice) : undefined
+        takeProfit: useTakeProfit ? parseFloat(takeProfitPrice) : undefined,
+        tradingMode
       };
 
       console.log('Placing advanced order:', orderData);
-      toast.success(`Advanced ${orderType} order placed for ${symbol}`);
+      toast.success(`Advanced ${orderType} order placed for ${symbol} (${tradingMode} mode)`);
       
     } catch (error) {
       console.error('Advanced order failed:', error);
@@ -83,9 +84,10 @@ const AdvancedOrderForm = ({ symbol, currentPrice }: AdvancedOrderFormProps) => 
         <CardTitle className="flex items-center gap-2">
           <Settings className="w-5 h-5" />
           Advanced Order Management
+          <Badge variant="outline">{tradingMode.toUpperCase()}</Badge>
         </CardTitle>
         <CardDescription>
-          Professional trading tools with risk management
+          Professional trading tools with risk management ({tradingMode} mode)
         </CardDescription>
       </CardHeader>
       <CardContent>

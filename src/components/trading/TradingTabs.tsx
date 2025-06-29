@@ -1,3 +1,4 @@
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BarChart3, Brain, Zap, DollarSign, TestTube, Bot, Activity } from "lucide-react";
 import ErrorBoundary from "@/components/error/ErrorBoundary";
@@ -16,6 +17,7 @@ import { useState } from "react";
 import { ConfigurationForm } from "@/components/backtesting/ConfigurationForm";
 import { BacktestResults } from "@/components/backtesting/BacktestResults";
 import { StrategyBuilder } from "@/components/algo/StrategyBuilder";
+import { StrategySelector } from "./StrategySelector";
 
 interface TradingTabsProps {
   selectedSymbol: string;

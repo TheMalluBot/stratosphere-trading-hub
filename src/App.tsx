@@ -13,9 +13,7 @@ import Dashboard from "@/pages/Dashboard";
 import Charts from "@/pages/Charts";
 import Watchlist from "@/pages/Watchlist";
 import Trading from "@/pages/Trading";
-import PaperTrading from "@/pages/PaperTrading";
 import TradingManagement from "@/pages/TradingManagement";
-import Backtesting from "@/pages/Backtesting";
 import MarketIntelligence from "@/pages/MarketIntelligence";
 import StockScreener from "@/pages/StockScreener";
 import PortfolioAnalytics from "@/pages/PortfolioAnalytics";
@@ -24,7 +22,6 @@ import Journal from "@/pages/Journal";
 import Settings from "@/pages/Settings";
 import NotFound from "@/pages/NotFound";
 import TradingView from "@/pages/TradingView";
-import AlgoTrading from "@/pages/AlgoTrading";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -61,10 +58,7 @@ function App() {
                     <Route path="charts" element={<Charts />} />
                     <Route path="watchlist" element={<Watchlist />} />
                     <Route path="trading" element={<Trading />} />
-                    <Route path="paper-trading" element={<PaperTrading />} />
-                    <Route path="algo-trading" element={<AlgoTrading />} />
                     <Route path="trading-management" element={<TradingManagement />} />
-                    <Route path="backtesting" element={<Backtesting />} />
                     <Route path="market-intelligence" element={<MarketIntelligence />} />
                     <Route path="screener" element={<StockScreener />} />
                     <Route path="portfolio-analytics" element={<PortfolioAnalytics />} />

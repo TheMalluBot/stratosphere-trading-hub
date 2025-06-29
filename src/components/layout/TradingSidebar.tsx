@@ -22,11 +22,9 @@ import {
   BookOpen,
   Settings,
   Activity,
-  Zap,
   Shield,
   Target,
   Monitor,
-  Bot,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 
@@ -60,29 +58,15 @@ const tradingMenuItems = [
 
 const tradingActions = [
   {
-    title: "Live Trading",
+    title: "Unified Trading",
     url: "/trading",
     icon: DollarSign,
-  },
-  {
-    title: "Paper Trading",
-    url: "/paper-trading",
-    icon: Activity,
-  },
-  {
-    title: "Algo Trading",
-    url: "/algo-trading",
-    icon: Bot,
+    description: "Live, Paper, Algo & Backtesting"
   },
   {
     title: "Trading Management",
     url: "/trading-management",
     icon: Target,
-  },
-  {
-    title: "Backtesting",
-    url: "/backtesting",
-    icon: Zap,
   },
   {
     title: "Stock Screener",
@@ -129,7 +113,7 @@ export function TradingSidebar() {
           </div>
           <div>
             <h1 className="text-lg font-bold">AlgoTrade Pro</h1>
-            <p className="text-xs text-muted-foreground">Advanced Trading Platform</p>
+            <p className="text-xs text-muted-foreground">Unified Trading Platform</p>
           </div>
         </div>
       </SidebarHeader>
@@ -158,7 +142,7 @@ export function TradingSidebar() {
         </SidebarGroup>
 
         <SidebarGroup>
-          <SidebarGroupLabel>Trading</SidebarGroupLabel>
+          <SidebarGroupLabel>Trading Hub</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {tradingActions.map((item) => (
@@ -170,7 +154,12 @@ export function TradingSidebar() {
                   >
                     <Link to={item.url} className="flex items-center gap-3">
                       <item.icon className="w-4 h-4" />
-                      <span>{item.title}</span>
+                      <div className="flex flex-col items-start">
+                        <span>{item.title}</span>
+                        {item.description && (
+                          <span className="text-xs text-muted-foreground">{item.description}</span>
+                        )}
+                      </div>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

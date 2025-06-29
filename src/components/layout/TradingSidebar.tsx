@@ -1,3 +1,4 @@
+
 import {
   Sidebar,
   SidebarContent,
@@ -32,7 +33,7 @@ import { Link, useLocation } from "react-router-dom";
 const tradingMenuItems = [
   {
     title: "Dashboard",
-    url: "/",
+    url: "/dashboard",
     icon: BarChart3,
   },
   {

@@ -4,7 +4,6 @@ import { SignedIn, UserButton, useUser } from "@clerk/clerk-react";
 import { TradingSidebar } from "./TradingSidebar";
 import { Card, CardContent } from "@/components/ui/card";
 import { User } from "lucide-react";
-import { ThemeToggle } from "./ThemeToggle";
 
 export function TradingLayout() {
   const { user } = useUser();
@@ -16,7 +15,7 @@ export function TradingLayout() {
         <SignedIn>
           <div className="h-full flex flex-col">
             {/* User info bar */}
-          <div className="border-b bg-muted/50 px-6 py-3">
+            <div className="border-b bg-muted/50 px-6 py-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <User className="w-5 h-5 text-muted-foreground" />
@@ -29,10 +28,7 @@ export function TradingLayout() {
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <UserButton afterSignOutUrl="/auth" />
-                  <ThemeToggle />
-                </div>
+                <UserButton afterSignOutUrl="/auth" />
               </div>
             </div>
             

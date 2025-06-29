@@ -22,13 +22,21 @@ interface TradingTabsProps {
   currentPrice: number;
   tradingMode: 'live' | 'paper' | 'algo' | 'backtest';
   connectionStatus: { live: boolean; configured: boolean };
+  marketData?: any[];
+  portfolio?: Array<{
+    symbol: string;
+    allocation: number;
+    value: number;
+  }>;
 }
 
 export const TradingTabs = ({ 
   selectedSymbol, 
   currentPrice, 
   tradingMode, 
-  connectionStatus 
+  connectionStatus,
+  marketData,
+  portfolio
 }: TradingTabsProps) => {
   const [showOnboarding, setShowOnboarding] = useState(true);
   const [activeTab, setActiveTab] = useState("dashboard");
